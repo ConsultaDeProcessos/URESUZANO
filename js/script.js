@@ -223,8 +223,8 @@ async function consultarProcesso() {
         let filaAtivaVTC = [];
         if (temVTCAtivo) {
             try {
-                // Consulta Direta Fila VTC Supabase, procurando status Em Análise (Aguardando)
-                const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&status=ilike.*lise*&select=*`, { method: 'GET', headers: defaultHeaders });
+                // Consulta Direta Fila VTC Supabase, agrupando os que estão pendentes na fila geral
+                const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&or=(status.ilike.*lise*,status.ilike.*andamento*,status.ilike.*exig*)&select=*`, { method: 'GET', headers: defaultHeaders });
                 if (resFila.ok) {
                     const todosVtc = await resFila.json();
                     filaAtivaVTC = todosVtc;
@@ -292,7 +292,7 @@ async function consultarProcesso() {
 
             // Definindo a cor e ícone baseando-se no STATUS
             const stLower = (processo.status || "").toLowerCase();
-            const isEmAndamentoStatus = stLower === "em analise" || stLower === "em andamento" || stLower === "análise" || stLower === "andamento" || stLower.includes("exigencia") || stLower.includes("exigência") || stLower.includes("atendendo");
+            const isEmAndamentoStatus = stLower.includes("análise") || stLower.includes("analise") || stLower.includes("andamento") || stLower.includes("exigencia") || stLower.includes("exigência") || stLower.includes("atendendo");
 
             let classeCorLateral = isEmAndamentoStatus ? "border-left-warning" : "border-left-primary";
             let corBadge = isEmAndamentoStatus ? "bg-warning text-dark" : "bg-primary";
@@ -300,22 +300,25 @@ async function consultarProcesso() {
             let statusDisplay = (processo.status || "EM ANÁLISE").toUpperCase();
 
             // Override finalizado, devolvido, nao faz jus
-            if (stLower.includes("finalizado") || stLower.includes("concluido") || stLower.includes("concluída")) {
+            if (stLower.includes("finalizado") || stLower.includes("concluido") || stLower.includes("concluída") || stLower.includes("concluído")) {
                 classeCorLateral = "border-left-success";
                 corBadge = "bg-success";
                 iconeBadge = "bi-check-circle-fill";
                 statusDisplay = "FINALIZADO";
             } else if (stLower.includes("devolvido") || stLower.includes("correção") || stLower.includes("correcao") || stLower.includes("pendente") || isRealmenteDevolvido) {
-                classeCorLateral = "border-left-danger"; // Danger para não conflitar com andamento
-                corBadge = "bg-danger";
+                classeCorLateral = "border-left-warning"; // Original era Amarelo (Warning) e não Danger
+                corBadge = "bg-warning text-dark";
                 iconeBadge = "bi-arrow-return-left";
                 statusDisplay = "DEVOLVIDO / PENDÊNCIA";
             } else if (stLower.includes("não faz jus") || stLower.includes("nao faz jus") || stLower.includes("indeferido") || isNaoFazJus) {
-                classeCorLateral = "border-left-dark"; // Dark para différenciar
-                corBadge = "bg-dark";
+                classeCorLateral = "border-left-danger"; // Original era Vermelho (Danger) e não Dark
+                corBadge = "bg-danger";
                 iconeBadge = "bi-x-circle-fill";
                 statusDisplay = "NÃO FAZ JUS";
             }
+            
+            // Fix para separar a cor pura do Bootstrap ('primary', 'warning', etc)
+            const nomeCorBase = corBadge.replace('bg-', '').replace(' text-dark', '');
 
             // Exibição da Unidade Escolar ou Setor
             let exibicaoEscola = escola || "SUA UNIDADE ESCOLAR";
@@ -369,13 +372,22 @@ async function consultarProcesso() {
                     if (diasEst > 120) diasEst = 120;
                     if (diasEst < 30) diasEst = 30;
                     
+                    const dataPrevisao = new Date();
+                    dataPrevisao.setDate(dataPrevisao.getDate() + diasEst);
+                    const dd = String(dataPrevisao.getDate()).padStart(2, '0');
+                    const mm = String(dataPrevisao.getMonth() + 1).padStart(2, '0');
+                    const yy = String(dataPrevisao.getFullYear()).slice(-2);
+                    const dataFormatada = `${dd}/${mm}/${yy}`;
+                    
                     infoFilaHtml = `
-                    <div class="bg-white p-3 rounded-3 border shadow-sm mx-auto my-3" style="text-align: left;">
-                        <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">
-                            O processo de <strong>${interessado}</strong> está no setor do <strong>SEFREP</strong>, atualmente na 
-                            <strong>posição ${posicaoReal}</strong> da fila de análise, com previsão de conclusão mínima em 
-                            <strong>até ${diasEst} dias corridos</strong>.
-                        </p>
+                    <div class="mt-2 text-start">
+                        <div class="d-inline-flex align-items-center bg-warning bg-opacity-25 border border-warning border-opacity-50 rounded-pill px-3 py-1 mb-1" style="font-size: 0.75rem;">
+                            <span class="text-dark fw-bold me-3"><i class="bi bi-people-fill me-1"></i> POSIÇÃO NA FILA: ${posicaoReal}º</span>
+                            <span class="text-dark fw-bold"><i class="bi bi-calendar-event me-1"></i> PREVISÃO: ${dataFormatada}</span>
+                        </div>
+                        <div class="text-muted ms-1" style="font-size: 0.65rem; max-width: 90%;">
+                            <i class="bi bi-info-circle"></i> A previsão pode sofrer alterações pontuais conforme o aumento da demanda do setor.
+                        </div>
                     </div>
                     `;
                 }
@@ -453,8 +465,8 @@ async function consultarProcesso() {
                                     <p class="mb-0 small text-dark" style="line-height: 1.6;"><strong>Próxima Ação Necessária:</strong> Para que a sua aposentadoria seja publicada em Diário Oficial, procure imediatamente a secretaria da sua Unidade Escolar e formalize o pedido final de concessão (Trâmite de Aposentadoria).</p>
                                 </div>
                             ` : `
-                                <div class="p-3 shadow-sm border-${corBadge.replace('bg-', '')}-subtle bg-${corBadge.replace('bg-', '')}-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
-                                    <h6 class="fw-bold text-${corBadge.replace('bg-', '').replace(' text-dark', '')} mb-2" style="font-size: 0.9rem;"><i class="bi bi-chat-left-text-fill me-1"></i> OBSERVAÇÃO:</h6>
+                                <div class="p-3 shadow-sm border-${nomeCorBase}-subtle bg-${nomeCorBase}-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-${nomeCorBase}-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-chat-left-text-fill me-1"></i> OBSERVAÇÃO:</h6>
                                     <p class="small text-dark mb-0" style="line-height: 1.6;">
                                         <i>"${obsLimpa || 'Sem detalhes adicionais disponíveis.'}"</i>
                                     </p>

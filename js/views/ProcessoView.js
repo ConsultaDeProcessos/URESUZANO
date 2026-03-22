@@ -46,6 +46,7 @@ export const ProcessoView = {
             const isVTC = tema.includes("VTC");
             const isQuinquenio = tema.includes("QUINQUÊNIO") || tema.includes("QUINQUENIO");
             const isContagemTempo = tema.includes("CONTAGEM");
+            const isAposentTema = tema.includes("APOSENTADORIA");
 
             let obsLimpa = (observacao || "").trim();
             const obsLower = obsLimpa.toLowerCase();
@@ -56,24 +57,24 @@ export const ProcessoView = {
             let isAposentadoria = false;
             let isEmAnaliseVTC = false;
 
-            if (isVTC) {
-                const temFinalizado = obsLower.includes("finalizado") || obsLower.includes("finalizada");
-                const temPendencia = obsLower.includes("falta") || obsLower.includes("correção") || obsLower.includes("pendente") || obsLower.includes("regularização") || obsLower.includes("devolvido para correção");
-                const temConcluido = obsLower.includes("concluido") || obsLower.includes("concluida");
-                
+            const temFinalizado = obsLower.includes("finalizado") || obsLower.includes("finalizada");
+            const temPendencia = obsLower.includes("falta") || obsLower.includes("correção") || obsLower.includes("pendente") || obsLower.includes("regularização") || obsLower.includes("devolvido para correção");
+            const temConcluido = obsLower.includes("concluido") || obsLower.includes("concluida");
+
+            if (isVTC || isAposentTema) {
                 if (obsLower.includes("não faz jus") || obsLower.includes("nao faz jus")) {
                     isNaoFazJus = true;
-                } else if (temFinalizado || temConcluido) {
-                    if (obsLower.includes("aposentadoria")) isAposentadoria = true;
+                } else if (temFinalizado || temConcluido || isAposentTema) {
+                    if (obsLower.includes("aposentadoria") || isAposentTema) isAposentadoria = true;
                     else if (obsLower.includes("abono")) isAbono = true;
-                    else if (!temPendencia) isAposentadoria = true;
+                    else if (!temPendencia && isVTC) isAposentadoria = true;
                 }
                 
                 if (!isNaoFazJus && !isAbono && !isAposentadoria && (temPendencia || obsLower.includes("devolvido"))) {
                     isRealmenteDevolvido = true;
                 }
 
-                if (!isNaoFazJus && !isAbono && !isAposentadoria && !isRealmenteDevolvido) {
+                if (!isNaoFazJus && !isAbono && !isAposentadoria && !isRealmenteDevolvido && isVTC) {
                     isEmAnaliseVTC = true;
                 }
             }
@@ -113,6 +114,7 @@ export const ProcessoView = {
             let exibicaoProtocoloOuSEI = `<span>PROTOCOLO: <span class="text-primary">${protocolo}</span></span>`;
             let exibicaoDataDOE = "";
             let temDOE = false;
+            let dataDOEExtraida = "---";
 
             const isLicenca = tema.includes("LICENÇA") || tema.includes("LICENCA");
             const isEvolucao = tema.includes("EVOLUÇÃO") || tema.includes("EVOLUCAO");
@@ -121,11 +123,13 @@ export const ProcessoView = {
                 exibicaoProtocoloOuSEI = `<span>NÚMERO DO SEI: <span class="text-${corBadge.replace('bg-', '')}">${protocolo}</span></span>`;
             }
 
-            if (tema.includes("APOSENTADORIA")) {
-                const regexDOE = /(?:PUBLICAÇÃO EM DOE|PUBLICACAO EM DOE|DOE)[\s\-,:]*([\d]{2}\/[\d]{2}\/[\d]{4})/i;
+            if (isAposentTema || obsLower.includes("doe")) {
+                // Regex aprimorado para pegar "DOE EM xx/xx/xxxx" ou "PUBLICAÇÃO NO DOE: ..."
+                const regexDOE = /(?:PUBLICAÇÃO|PUBLICACAO)?\s*(?:NO\s+)?DOE\s*(?:EM|DE)?\s*[\-,:]*\s*([\d]{2}\/[\d]{2}\/[\d]{4})/i;
                 const match = obsLimpa.match(regexDOE);
                 if (match && match[1]) {
-                    exibicaoDataDOE = `<span class="mx-2 text-muted fw-normal">|</span><span class="text-secondary"><i class="bi bi-newspaper me-1"></i> PUBLICAÇÃO EM DOE: <span class="fw-bold text-dark">${match[1]}</span></span>`;
+                    dataDOEExtraida = match[1];
+                    exibicaoDataDOE = `<span class="mx-2 text-muted fw-normal">|</span><span class="text-secondary"><i class="bi bi-newspaper me-1"></i> PUBLICAÇÃO EM DOE: <span class="fw-bold text-dark">${dataDOEExtraida}</span></span>`;
                     temDOE = true;
                 }
             }
@@ -237,12 +241,13 @@ export const ProcessoView = {
                                 </div>
                             ` : isAposentadoria ? `
                                 <div class="p-3 shadow-sm border-info-subtle bg-info-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
-                                    <h6 class="fw-bold text-primary-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-check-all me-1"></i> VTC Preparada para Aposentadoria</h6>
-                                    <p class="small text-dark mb-2">A revisão foi deferida no dia <strong>${dataSaida || '---'}</strong>.</p>
-                                    <p class="small text-dark mb-2">Sua Validação atesta o direito à aposentadoria sob as regras do Estado.</p>
+                                    <h6 class="fw-bold text-primary-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-check-all me-1"></i> ${isAposentTema ? 'Aposentadoria Publicada' : 'VTC Preparada para Aposentadoria'}</h6>
+                                    <p class="small text-dark mb-2">${isAposentTema ? 'Seu processo de aposentadoria foi <strong>Aprovado e Finalizado</strong>.' : `A revisão foi deferida no dia <strong>${dataSaida || '---'}</strong>.`}</p>
+                                    ${temDOE ? `<p class="small text-dark mb-2"><i class="bi bi-newspaper"></i> Publicação no Diário Oficial do Estado (DOE) em: <strong>${dataDOEExtraida}</strong>.</p>` : ''}
                                     <hr style="border-color: rgba(0,0,0,0.1);">
-                                    <p class="mb-0 small text-dark"><strong>Ação:</strong> Procure a secretaria da sua Escola para formalizar o Trâmite de Aposentadoria.</p>
+                                    <p class="mb-0 small text-dark"><strong>Ação:</strong> ${isAposentTema ? 'Procure a gerência da sua Escola para os trâmites finais de afastamento/publicação.' : 'Procure a secretaria da sua Escola para formalizar o Trâmite de Aposentadoria.'}</p>
                                 </div>
+
                             ` : `
                                 <div class="p-3 shadow-sm border-${nomeCorBase}-subtle bg-${nomeCorBase}-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
                                     <h6 class="fw-bold text-${nomeCorBase}-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-chat-left-text-fill me-1"></i> OBSERVAÇÃO:</h6>

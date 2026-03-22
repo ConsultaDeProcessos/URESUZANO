@@ -1,8 +1,7 @@
 import { ProcessoView } from '../views/ProcessoView.js';
 
-// URL da nossa API no Vercel (Pode ser local /api/consultar ou a hospedada quando feito o deploy da Opção A)
-// Para testar usando OPÇÃO A em prod: alterar para a URL final do vercel (ex: https://api-consultas.vercel.app/api/consultar)
-const API_URL = '/api/consultar';  
+// URL da nossa API no Vercel
+const API_URL = 'https://uresuzano-qkjksx16u-projetovibecode-2326s-projects.vercel.app/api/consultar';  
 
 export const ProcessoController = {
     

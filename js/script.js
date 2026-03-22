@@ -223,13 +223,11 @@ async function consultarProcesso() {
         let filaAtivaVTC = [];
         if (temVTCAtivo) {
             try {
-                // Consulta Direta Fila VTC Supabase
-                const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&status=ilike.%25andamento%25&select=*`, { method: 'GET', headers: defaultHeaders });
+                // Consulta Direta Fila VTC Supabase, procurando status Em Análise (Aguardando)
+                const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&status=ilike.*lise*&select=*`, { method: 'GET', headers: defaultHeaders });
                 if (resFila.ok) {
                     const todosVtc = await resFila.json();
-                    // O endpoint /queue já traz apenas os válidos "Em andamento" da tabela SEFREP ordenados
                     filaAtivaVTC = todosVtc;
-                    // Ordenação: data_entrada, se for do mesmo dia usa-se data de inclusão no banco (created_at)
                     filaAtivaVTC.sort((a, b) => {
                         const d1 = new Date(a.data_entrada || 0).getTime();
                         const d2 = new Date(b.data_entrada || 0).getTime();
@@ -359,31 +357,25 @@ async function consultarProcesso() {
 
             // --- LÓGICA DE FILA INJETADA NO CABEÇALHO PARA VTC ---
             let infoFilaHtml = "";
+            let dataEntradaRealVTC = dataEntrada ? new Date(processo.data_entrada) : new Date();
+
             if (isEmAnaliseVTC && filaAtivaVTC.length > 0) {
                 const indexNaFila = filaAtivaVTC.findIndex(p => p.id === processo.id);
                 if (indexNaFila >= 0) {
                     const posicaoReal = indexNaFila + 1;
                     
-                    // Média de análise aplicada entre 30 a 120 dias (baseado na posição da fila)
-                    let mediaDias = Math.floor(30 + (posicaoReal * 2.5));
-                    if (mediaDias > 120) mediaDias = 120;
-                    
-                    const dataPrevisao = new Date();
-                    dataPrevisao.setDate(dataPrevisao.getDate() + mediaDias);
-                    const dd = String(dataPrevisao.getDate()).padStart(2, '0');
-                    const mm = String(dataPrevisao.getMonth() + 1).padStart(2, '0');
-                    const yy = String(dataPrevisao.getFullYear()).slice(-2);
-                    const dataFormatada = `${dd}/${mm}/${yy}`;
+                    const diasDecorridos = Math.floor((new Date() - dataEntradaRealVTC) / (1000 * 60 * 60 * 24));
+                    let diasEst = 60 + Math.floor((indexNaFila >= 0 ? indexNaFila : 0) * 0.25) - diasDecorridos;
+                    if (diasEst > 120) diasEst = 120;
+                    if (diasEst < 30) diasEst = 30;
                     
                     infoFilaHtml = `
-                    <div class="mt-2 text-start">
-                        <div class="d-inline-flex align-items-center bg-warning bg-opacity-25 border border-warning border-opacity-50 rounded-pill px-3 py-1 mb-1" style="font-size: 0.75rem;">
-                            <span class="text-dark fw-bold me-3"><i class="bi bi-people-fill me-1"></i> POSIÇÃO NA FILA: ${posicaoReal}º</span>
-                            <span class="text-dark fw-bold"><i class="bi bi-calendar-event me-1"></i> PREVISÃO: ${dataFormatada}</span>
-                        </div>
-                        <div class="text-muted ms-1" style="font-size: 0.65rem; max-width: 90%;">
-                            <i class="bi bi-info-circle"></i> A previsão pode sofrer alterações pontuais conforme o aumento da demanda do setor.
-                        </div>
+                    <div class="bg-white p-3 rounded-3 border shadow-sm mx-auto my-3" style="text-align: left;">
+                        <p class="mb-0 text-dark" style="font-size: 0.95rem; line-height: 1.5;">
+                            O processo de <strong>${interessado}</strong> está no setor do <strong>SEFREP</strong>, atualmente na 
+                            <strong>posição ${posicaoReal}</strong> da fila de análise, com previsão de conclusão mínima em 
+                            <strong>até ${diasEst} dias corridos</strong>.
+                        </p>
                     </div>
                     `;
                 }

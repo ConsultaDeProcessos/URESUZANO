@@ -15,6 +15,7 @@ async function checarSessao() {
         // Pula o login e mostra o Dashboard
         telaLogin.classList.add('hidden');
         telaDashboard.classList.remove('hidden');
+        carregarDashboard();
     }
 }
 
@@ -50,6 +51,7 @@ async function realizarLogin(event) {
         btnLogin.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i> Autenticar';
         btnLogin.disabled = false;
         formLogin.reset();
+        carregarDashboard();
     }
 }
 
@@ -106,6 +108,7 @@ async function cadastrarProcesso(event) {
         document.getElementById('cadProtocolo').value = "";
         document.getElementById('cadDataSaida').value = "";
         document.getElementById('cadNome').focus();
+        carregarDashboard();
     }
 
     // Resetar Botão
@@ -137,3 +140,42 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Erro ao checar sessão:", e);
     }
 });
+
+// 8. LÓGICA DO DASHBOARD (MÉTRICAS 2026)
+async function carregarDashboard() {
+    try {
+        const [resSeape, resSefrep] = await Promise.all([
+            clienteSupabase.from('seape_registros').select('tema, status, observacoes, data_entrada'),
+            clienteSupabase.from('sefrep_registros').select('tema, status, observacoes, data_entrada')
+        ]);
+
+        const todos = [...(resSeape.data || []), ...(resSefrep.data || [])];
+        
+        // Filtro do ano de 2026
+        const filtro2026 = todos.filter(p => p.data_entrada && p.data_entrada.startsWith('2026'));
+
+        // Filtro Aposentadorias
+        const aposentadorias = filtro2026.filter(p => p.tema && p.tema.toUpperCase().includes('APOSENTADORIA'));
+        
+        // Verificando quais foram para DOE
+        const publicadas = aposentadorias.filter(p => {
+            const obs = (p.observacoes || "").toUpperCase();
+            return obs.includes('DOE') || obs.includes('DIÁRIO') || obs.includes('PUBLICAÇÃO');
+        });
+
+        // O restante das aposentadorias está na fila aguardando
+        const aguardando = aposentadorias.length - publicadas.length;
+
+        // Injeta na Interface
+        const elTotal = document.getElementById('dashTotal');
+        const elPub = document.getElementById('dashPub');
+        const elFila = document.getElementById('dashFila');
+        
+        if(elTotal) elTotal.innerText = filtro2026.length;
+        if(elPub) elPub.innerText = publicadas.length;
+        if(elFila) elFila.innerText = aguardando;
+        
+    } catch(e) {
+        console.error("Erro ao carregar Dashboard:", e);
+    }
+}

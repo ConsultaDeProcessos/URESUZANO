@@ -1,7 +1,7 @@
 import { ProcessoView } from '../views/ProcessoView.js';
 
 // URL da nossa API no Vercel
-const API_URL = 'https://uresuzano-qkjksx16u-projetovibecode-2326s-projects.vercel.app/api/consultar';  
+const API_URL = 'https://uresuzano.vercel.app/api/consultar';  
 
 export const ProcessoController = {
     

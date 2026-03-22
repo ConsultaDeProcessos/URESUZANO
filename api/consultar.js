@@ -1,8 +1,21 @@
 export default async function handler(req, res) {
-    // CORS permissivo para dev - Em prod, pode ser o domínio github.io
+    // 1. TRAVA REAL CONTRA POSTMAN, SCRIPTS PYTHON E HACKERS (Verificação de Origin)
+    const origin = req.headers.origin || "";
+    const allowedOrigins = [
+        'https://consultarprocessos.github.io', // Site de Produção Oficial
+        'http://127.0.0.1:5500',                // Live Server (Suas Edições Locais)
+        'http://localhost:5500',
+        'http://localhost:3000'
+    ];
+
+    if (!allowedOrigins.includes(origin)) {
+        return res.status(403).json({ error: "Acesso Negado: Você está tentando acessar de uma fonte não autorizada." });
+    }
+
+    // 2. CORS PARA O NAVEGADOR
     res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*'); 
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader('Access-Control-Allow-Origin', origin); 
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
     // Retorno rápido para requisições de preflight do CORS

@@ -3,14 +3,14 @@ const SUPABASE_URL = "https://fdcxcuyxrgbpmcrryiof.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY3hjdXl4cmdicG1jcnJ5aW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTk5NTMsImV4cCI6MjA4OTY5NTk1M30.AGRudVkfcFNGTftdV02NA3Xz6Xs1WzYruqCWLVnF-Rw";
 
 // Criação do client do Supabase (A biblioteca importada no HTML viabiliza o 'window.supabase')
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 2. REFERÊNCIAS DO DOM (Escopo Global)
 let telaLogin, telaDashboard, formLogin, formCadastro, btnSair;
 
 // 3. VERIFICADOR DE SESSÃO AUTOMÁTICO
 async function checarSessao() {
-    const { data: authData } = await supabase.auth.getSession();
+    const { data: authData } = await clienteSupabase.auth.getSession();
     if (authData.session) {
         // Pula o login e mostra o Dashboard
         telaLogin.classList.add('hidden');
@@ -33,7 +33,7 @@ async function realizarLogin(event) {
     alertBox.style.display = 'none';
 
     // Requisição oficial Auth do Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await clienteSupabase.auth.signInWithPassword({
         email: email,
         password: senha,
     });
@@ -55,7 +55,7 @@ async function realizarLogin(event) {
 
 // 5. LÓGICA DE LOGOUT
 async function realizarLogout() {
-    await supabase.auth.signOut();
+    await clienteSupabase.auth.signOut();
     telaDashboard.classList.add('hidden');
     telaLogin.classList.remove('hidden');
 }
@@ -78,13 +78,14 @@ async function cadastrarProcesso(event) {
         tema: document.getElementById('cadTema').value.trim().toUpperCase(),
         status: document.getElementById('cadStatus').value,
         data_entrada: document.getElementById('cadDataEntrada').value,
+        data_saida: document.getElementById('cadDataSaida').value || null,
         protocolo: document.getElementById('cadProtocolo').value.trim().toUpperCase(),
         escola: document.getElementById('cadEscola').value.trim().toUpperCase(),
         observacoes: document.getElementById('cadObservacoes').value.trim()
     };
 
     // Comando de Insert Protegido (Automático via JWT nativo Supabase)
-    const { data, error } = await supabase
+    const { data, error } = await clienteSupabase
         .from(tabelaSelecionada)
         .insert([dadosProcesso]);
 
@@ -103,6 +104,7 @@ async function cadastrarProcesso(event) {
         document.getElementById('cadTema').value = "";
         document.getElementById('cadObservacoes').value = "";
         document.getElementById('cadProtocolo').value = "";
+        document.getElementById('cadDataSaida').value = "";
         document.getElementById('cadNome').focus();
     }
 
@@ -123,8 +125,15 @@ document.addEventListener("DOMContentLoaded", () => {
     formCadastro = document.getElementById('formCadastro');
     btnSair = document.getElementById('btnSair');
 
-    checarSessao();
+    // Sempre registre os eventos primeiro! Assim o formulário nunca recarrega a página por acidente.
     if (formLogin) formLogin.addEventListener("submit", realizarLogin);
     if (formCadastro) formCadastro.addEventListener("submit", cadastrarProcesso);
     if (btnSair) btnSair.addEventListener("click", realizarLogout);
+
+    // Depois execute conferências que podem dar erro
+    try {
+        checarSessao();
+    } catch (e) {
+        console.error("Erro ao checar sessão:", e);
+    }
 });

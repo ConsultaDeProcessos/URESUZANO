@@ -80,24 +80,30 @@
                     <input type="text" class="form-control" id="cadNome" placeholder="Ex: Maria José da Silva" required>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small text-muted">Tema do Requerimento</label>
-                    <input type="text" class="form-control" id="cadTema" placeholder="Ex: VTC, QUINQUÊNIO..." required>
+                    <input type="text" class="form-control" id="cadTema" placeholder="Ex: VTC..." required>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small text-muted">Status Atual</label>
                     <select class="form-select" id="cadStatus" required>
                         <option value="Em Análise" selected>Em Análise (Aguardando)</option>
+                        <option value="Atendimento de Exigência">Atendimento de Exigência</option>
                         <option value="Devolvido para Correção">Devolvido para Correção</option>
                         <option value="Não faz jus">Não Faz Jus (Negado)</option>
                         <option value="Finalizado">Finalizado (Aprovado)</option>
                     </select>
                 </div>
 
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label fw-bold small text-muted">Data de Entrada</label>
                     <input type="date" class="form-control" id="cadDataEntrada" required>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">Data de Saída</label>
+                    <input type="date" class="form-control" id="cadDataSaida">
                 </div>
 
                 <div class="col-md-6">

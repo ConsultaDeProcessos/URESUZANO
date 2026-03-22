@@ -2,7 +2,7 @@ export default async function handler(req, res) {
     // 1. TRAVA REAL CONTRA POSTMAN, SCRIPTS PYTHON E HACKERS (Verificação de Origin)
     const origin = req.headers.origin || "";
     const allowedOrigins = [
-        'https://consultarprocessos.github.io', // Site de Produção Oficial
+        'https://consultadeprocessos.github.io', // Site de Produção Oficial
         'http://127.0.0.1:5500',                // Live Server (Suas Edições Locais)
         'http://localhost:5500',
         'http://localhost:3000'

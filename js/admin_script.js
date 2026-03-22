@@ -5,12 +5,8 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 // Criação do client do Supabase (A biblioteca importada no HTML viabiliza o 'window.supabase')
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 2. REFERÊNCIAS DO DOM (Telas e Botões)
-const telaLogin = document.getElementById('telaLogin');
-const telaDashboard = document.getElementById('telaDashboard');
-const formLogin = document.getElementById('formLogin');
-const formCadastro = document.getElementById('formCadastro');
-const btnSair = document.getElementById('btnSair');
+// 2. REFERÊNCIAS DO DOM (Escopo Global)
+let telaLogin, telaDashboard, formLogin, formCadastro, btnSair;
 
 // 3. VERIFICADOR DE SESSÃO AUTOMÁTICO
 async function checarSessao() {
@@ -120,6 +116,13 @@ async function cadastrarProcesso(event) {
 
 // 7. LISTENERS DE EVENTOS (Prendendo a lógica na Página)
 document.addEventListener("DOMContentLoaded", () => {
+    // Captura os elementos apenas quando eles já existem na tela
+    telaLogin = document.getElementById('telaLogin');
+    telaDashboard = document.getElementById('telaDashboard');
+    formLogin = document.getElementById('formLogin');
+    formCadastro = document.getElementById('formCadastro');
+    btnSair = document.getElementById('btnSair');
+
     checarSessao();
     if (formLogin) formLogin.addEventListener("submit", realizarLogin);
     if (formCadastro) formCadastro.addEventListener("submit", cadastrarProcesso);

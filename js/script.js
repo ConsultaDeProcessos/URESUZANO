@@ -103,10 +103,8 @@ async function consultarProcesso() {
     resultadoArea.className = "mt-4 p-4 card-glass border-0 d-flex align-items-center justify-content-center shadow-lg";
 
     // Configuração Supabase Direta Frontend c/ Ofuscação Leve Base64
-    const SUPABASE_URL = "https://ffprsdeicjjttfedzbif.supabase.co";
-    // Chave ofuscada em Base64 para evitar varreduras automatizadas simples no código-fonte
-    const b64 = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1abWNISnpaR1ZwWTJwcWRIUm1aV1I2WW1sbUlpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTmpVMU5UZzROVGtzSW1WNGNDSTZNakE0TVRFek5EZzFPWDAuVTVKMUw2dnY3Ulp6dHhVako0VUtjTmh0SHp3T2xhVTBOVGVYb3lBYTBHVQ==";
-    const SUPABASE_KEY = atob(b64);
+    const SUPABASE_URL = "https://fdcxcuyxrgbpmcrryiof.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkY3hjdXl4cmdicG1jcnJ5aW9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxMTk5NTMsImV4cCI6MjA4OTY5NTk1M30.AGRudVkfcFNGTftdV02NA3Xz6Xs1WzYruqCWLVnF-Rw";
 
     const defaultHeaders = {
         'apikey': SUPABASE_KEY,

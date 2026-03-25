@@ -99,11 +99,16 @@ async function consultarProcesso() {
         // O Proxy da Vercel já fez todo o trabalho sujo de buscar nas duas tabelas
         const todosResultados = await resProxy.json();
 
-       /* Substitua o bloco da linha 102 no script.js por este: */
-// Se o resultado não for uma lista útil, ele vai nos mostrar o motivo
+      /* Substitua o bloco da linha 102 até a 105 por este código de segurança */
+// 1. VERIFICAÇÃO DE ERRO DO BANCO
 if (!Array.isArray(todosResultados)) {
-    console.error("ERRO DETALHADO DO BANCO:", todosResultados);
-    exibirResultado(`❌ Erro técnico do banco: ${todosResultados.message || 'Falha na tabela'}`);
+    console.error("ERRO COMPLETO DO BANCO:", todosResultados);
+    exibirResultado(`❌ O servidor respondeu um erro: ${todosResultados.message || 'Falha na conexão com o Banco'}`);
+    return;
+}
+// 2. VERIFICAÇÃO DE RESULTADO VAZIO
+if (todosResultados.length === 0) {
+    exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
     return;
 }
 if (todosResultados.length === 0) {

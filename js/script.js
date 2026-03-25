@@ -99,10 +99,17 @@ async function consultarProcesso() {
         // O Proxy da Vercel já fez todo o trabalho sujo de buscar nas duas tabelas
         const todosResultados = await resProxy.json();
 
-        if (todosResultados.length === 0) {
-            exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.<br><small>Verifique se o código foi digitado corretamente. Em caso de dúvidas, procure a sua unidade escolar.</small>`, "warning");
-            return;
-        }
+       /* Substitua o bloco da linha 102 no script.js por este: */
+// Se o resultado não for uma lista útil, ele vai nos mostrar o motivo
+if (!Array.isArray(todosResultados)) {
+    console.error("ERRO DETALHADO DO BANCO:", todosResultados);
+    exibirResultado(`❌ Erro técnico do banco: ${todosResultados.message || 'Falha na tabela'}`);
+    return;
+}
+if (todosResultados.length === 0) {
+    exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
+    return;
+}
 
         // --- LÓGICA DE DEDUPLICAÇÃO ---
         // (Agrupa apenas em caso de duplicação do mesmo tema, embora os IDs sejam únicos)

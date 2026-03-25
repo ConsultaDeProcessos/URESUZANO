@@ -79,28 +79,16 @@ export default async function handler(req, res) {
     }
 
     // 5. VALIDAÇÃO E SANITIZAÇÃO DO INPUT
-    const { nome } = req.query;
-
-    if (!nome) {
-        return res.status(400).json({ error: "Por favor, digite um nome válido." });
+    // 5. VALIDAÇÃO E SANITIZAÇÃO DO PROTOCOLO (Novo)
+    const { protocolo } = req.query;
+    if (!protocolo) {
+        return res.status(400).json({ error: "Por favor, digite o número do protocolo." });
     }
-
-    const nomeLimpo = nome.trim();
-
-    // Bloquear wildcards e caracteres perigosos para evitar Data Exfiltration
-    if (/^[\s*%_]+$/.test(nomeLimpo) || nomeLimpo === '*' || nomeLimpo === '%') {
-        return res.status(400).json({ error: "Consulta inválida. Por favor, digite um nome real." });
-    }
-
-    // Exigir no mínimo 3 caracteres para evitar consultas vagas demais
-    if (nomeLimpo.length < 3) {
-        return res.status(400).json({ error: "O nome deve ter pelo menos 3 caracteres." });
-    }
-
-    // Remover caracteres especiais SQL/Supabase (sanitização extra)
-    const nomeSeguro = nomeLimpo.replace(/[*%_;'"\\]/g, '');
-    if (nomeSeguro.length < 3) {
-        return res.status(400).json({ error: "O nome contém caracteres inválidos. Digite apenas letras e espaços." });
+    // Limpa espaços e garante que o protocolo esteja em maiúsculas
+    const protocoloLimpo = protocolo.trim().toUpperCase();
+    // Verificação de segurança básica (mínimo de 5 caracteres para um protocolo real)
+    if (protocoloLimpo.length < 5) {
+        return res.status(400).json({ error: "O número do protocolo parece curto demais. Verifique se digitou corretamente." });
     }
 
     // 6. CONEXÃO COM O SUPABASE (Credenciais seguras via ENV)
@@ -120,8 +108,8 @@ export default async function handler(req, res) {
         const nomeBusca = nomeSeguro.replace(/\s+/g, '*');
 
         const [resSefrep, resSeape] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?nome=ilike.*${encodeURIComponent(nomeBusca)}*&select=*`, { headers: defaultHeaders }),
-            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?nome=ilike.*${encodeURIComponent(nomeBusca)}*&select=*`, { headers: defaultHeaders })
+            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?protocolo=eq.${protocolo}&select=*, { headers: defaultHeaders }),
+            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?protocolo=eq.${protocolo}&select=*, { headers: defaultHeaders })
         ]);
 
         if (resSefrep.status === 429 || resSeape.status === 429) {

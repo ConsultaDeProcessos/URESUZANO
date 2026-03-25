@@ -1,79 +1,398 @@
-﻿/* troca de telas */
-
-/**
- * Alterna a visibilidade das seções (Início, Simulador, etc)
- * Melhora a experiência do usuário fechando menus e limpando resultados.
- */
-function mostrar(id) {
-    // Mapeamento de IDs para garantir que o assistente de bolso funcione
-    const mapaId = {
-        'consultar': 'processo',
-        'solicitar': 'contagem',
-        'documentos': 'documentos',
-        'inicio': 'inicio',
-        'requisitos': 'requisitos',
-        'simulador': 'simulador'
-    };
-
-    const targetId = mapaId[id] || id;
-
-    const telas = document.querySelectorAll(".tela");
-    telas.forEach(tela => tela.style.display = "none");
-
-    const target = document.getElementById(targetId);
-    if (target) {
-        target.style.display = "block";
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // Lógica de visibilidade dos botões de navegação
-    const navItemInicio = document.getElementById('nav-item-inicio');
-    const navItemRequisitos = document.getElementById('nav-item-requisitos');
-    const navItemDocumentos = document.getElementById('nav-item-documentos');
-
-    if (targetId === 'inicio') {
-        if (navItemInicio) navItemInicio.style.display = 'none';
-        if (navItemRequisitos) navItemRequisitos.style.display = 'none';
-        if (navItemDocumentos) navItemDocumentos.style.display = 'none';
-    } else {
-        if (navItemInicio) navItemInicio.style.display = 'block';
-        if (navItemRequisitos) navItemRequisitos.style.display = 'none';
-        if (navItemDocumentos) navItemDocumentos.style.display = 'none';
-    }
-
-    // Fecha o menu mobile do Bootstrap
-    const navBar = document.getElementById('navMenu');
-    if (navBar && navBar.classList.contains('show')) {
-        const bootstrapCollapse = bootstrap.Collapse.getInstance(navBar);
-        if (bootstrapCollapse) bootstrapCollapse.hide();
-    }
-}
-
-// Lógica para abrir aba específica via parâmetro na URL (?aba=id)
 document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const aba = urlParams.get('aba');
-    if (aba) {
-        // Pequeno atraso para garantir que tudo carregou
-        setTimeout(() => mostrar(aba), 100);
-    }
+    // Inicializa Popovers (Para as tabelas interativas)
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 });
 
-/**
- * Alterna a visibilidade do card de Regras de Paridade e Integralidade
- */
-function toggleRegrasFinanceiras() {
-    const content = document.getElementById('collapseRegrasFinanceiras');
-    const btn = document.getElementById('btnToggleRegras');
 
-    if (content.style.display === "none") {
-        content.style.display = "block";
-        btn.innerHTML = 'Clique para recolher <i class="bi bi-chevron-up ms-1"></i>';
-    } else {
-        content.style.display = "none";
-        btn.innerHTML = 'Clique para expandir <i class="bi bi-chevron-down ms-1"></i>';
+/**
+ * Consulta um processo unificado (SEFREP e SEAPE)
+ * Atualizado para ASP.NET Core Proxy
+ */
+async function consultarProcesso() {
+    const input = document.getElementById("processoNumero");
+    // Remove espaços no ínicio/fim e padroniza a busca (maiúsculas)
+    const protocoloDigitado = input.value.trim().toUpperCase();
+    const resultadoArea = document.getElementById("resultadoProcesso");
+
+    // Lógica 0: Verifica o selo de humanidade do Captcha
+    const turnstileInput = document.querySelector('[name="cf-turnstile-response"]');
+    const cfToken = turnstileInput ? turnstileInput.value : null;
+
+    if (!protocoloDigitado) {
+        exibirResultado("⚠ Por favor, digite o número do protocolo.", "warning");
+        return;
+    }
+
+    if (!cfToken) {
+        exibirResultado("⚠ Verificação de segurança (Anti-Robô) pendente ou expirada. Pressione F5 e aguarde a validação.", "warning");
+        return;
+    }
+
+    // 4. MENSAGEM HUMANIZADA POR STATUS DE VTC
+    const getHumanMessage = (status) => {
+        const messages = {
+            'EM ANDAMENTO': {
+                title: 'Tudo caminhando bem!',
+                text: 'Seu processo está seguindo o fluxo normal e em análise pela nossa equipe. Estamos cuidando de tudo.',
+                color: 'info',
+                icon: 'bi-gear-wide-connected'
+            },
+            'PENDENTE': {
+                title: 'Aumento de Demanda',
+                text: 'Tivemos um grande volume de pedidos recentemente. Pode levar um pouquinho mais de tempo, mas sua vez está chegando!',
+                color: 'warning',
+                icon: 'bi-exclamation-triangle'
+            },
+            'ATRASADO': {
+                title: 'Sentimos muito pela demora',
+                text: 'Estamos com uma demanda muito acima do esperado, o que gerou um atraso. Estamos trabalhando duro para regularizar o quanto antes.',
+                color: 'danger',
+                icon: 'bi- clock-history'
+            },
+            'CONCLUÍDO': {
+                title: 'Processo Finalizado!',
+                text: 'Boas notícias! Sua análise foi concluída com sucesso. Verifique as observações abaixo.',
+                color: 'success',
+                icon: 'bi-check-circle'
+            }
+        };
+        return messages[status.toUpperCase()] || { title: 'Em Análise', text: 'Seu processo está sendo processado por nossa equipe técnica.', color: 'primary', icon: 'bi-info-circle' };
+    };
+
+    // 1. Limpeza e Feedback Visual (Moderno)
+    resultadoArea.innerHTML = `
+        <div class="text-center py-5 w-100 animate__animated animate__fadeIn">
+            <div class="spinner-grow text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <p class="text-muted fw-medium mb-0">Localizando protocolo nas bases de dados, um momento...</p>
+        </div>
+    `;
+    resultadoArea.className = "mt-4 p-4 card-glass border-0 d-flex align-items-center justify-content-center shadow-lg";
+
+    // -------------------------------------------------------------
+    // AS CHAVES E A URL DO SUPABASE NÃO EXISTEM MAIS NESTE ARQUIVO! 
+    // ESTAMOS 100% PROTEGIDOS PELA API DA VERCEL.
+    // -------------------------------------------------------------
+
+    try {
+        // 2. Consulta direcionada ao nosso "Guarda-Costas" (API do Vercel remotamente do Github Pages)
+        const encodedProtocol = encodeURIComponent(protocoloDigitado);
+        
+        // Chamando o link absoluto onde nossa API Backend está hospedada agora!
+        // E enviando o token de segurança Anti-Robô no cabeçalho
+        const resProxy = await fetch(`https://api-consultaprotocolo.vercel.app/api/consultar?protocolo=${encodedProtocol}`, { 
+            method: 'GET',
+            headers: {
+                'X-Turnstile-Token': cfToken
+            }
+        });
+
+        if (resProxy.status === 429) {
+            exibirResultado(`⚠️ <b>Limite de consultas atingido.</b><br><small>Você realizou muitas buscas em pouco tempo. Por favor, aguarde cerca de 1 minuto e tente novamente.</small>`, "warning");
+            return;
+        }
+
+        if (!resProxy.ok) {
+            throw new Error("Erro de comunicação com o servidor seguro Vercel.");
+        }
+
+        // O Proxy da Vercel já fez todo o trabalho sujo de buscar nas duas tabelas
+        const todosResultados = await resProxy.json();
+
+        if (todosResultados.length === 0) {
+            exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.<br><small>Verifique se o código foi digitado corretamente. Em caso de dúvidas, procure a sua unidade escolar.</small>`, "warning");
+            return;
+        }
+
+        // --- LÓGICA DE DEDUPLICAÇÃO ---
+        // (Agrupa apenas em caso de duplicação do mesmo tema, embora os IDs sejam únicos)
+        const temasUnicos = new Map();
+        
+        todosResultados.forEach(p => {
+            const temaKey = (p.tema || "OUTROS").toUpperCase().trim();
+            if (!temasUnicos.has(temaKey)) {
+                temasUnicos.set(temaKey, p);
+            }
+        });
+        const resultadosFiltrados = Array.from(temasUnicos.values());
+
+        // Limpar área para novos cards premium
+        resultadoArea.innerHTML = "";
+        resultadoArea.className = "mt-4 row g-4";
+
+        const formatarDataLocal = (str) => {
+            if (!str) return null;
+            const partes = str.split('T')[0].split('-');
+            return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : null;
+        };
+
+        // --- PREPARAÇÃO DA FILA VTC UNIFICADA (Apenas 1 Request) ---
+        // Verificamos se há algum processo VTC "Em Andamento/Análise" nos resultados antes de buscar a fila inteira.
+        const temVTCAtivo = resultadosFiltrados.some(p => {
+            const tema = (p.tema || "").toUpperCase();
+            const stLower = (p.status || "").toLowerCase();
+            const obs = (p.observacoes || "").toLowerCase();
+            return tema.includes("VTC") && 
+                   !obs.includes("finalizado") && 
+                   !obs.includes("analise concluida") && 
+                   !obs.includes("devolvido") &&
+                   !obs.includes("não faz jus") &&
+                   !obs.includes("nao faz jus");
+        });
+
+        // A fila global agora é calculada nativamente pela API Vercel no Backend para máxima segurança.
+    
+    // --- FUNÇÃO DE ESCAPE PARA PREVENÇÃO DE XSS ---
+    const escapeHTML = (str) => {
+        if (!str) return "";
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    };
+
+        // 3. Renderização Premium
+        for (const processo of resultadosFiltrados) {
+            const tema = escapeHTML((processo.tema || "Processo").toUpperCase());
+            const statusReal = (processo.status || "em analise").toLowerCase();
+            const observacao = escapeHTML(processo.observacoes || "");
+            const interessado = escapeHTML((processo.nome || "Não informado").toUpperCase());
+            const protocolo = escapeHTML(processo.protocolo || "N/D");
+            const escola = escapeHTML((processo.escola || "").toUpperCase());
+            // Formatação de Datas
+            const dataEntrada = formatarDataLocal(processo.data_entrada);
+            const dataSaida = formatarDataLocal(processo.data_saida);
+
+            const isVTC = tema.includes("VTC");
+            const isQuinquenio = tema.includes("QUINQUÊNIO") || tema.includes("QUINQUENIO");
+            const isContagemTempo = tema.includes("CONTAGEM");
+
+            let obsLimpa = (observacao || "").trim();
+            const obsLower = obsLimpa.toLowerCase();
+
+            let isRealmenteDevolvido = false;
+            let isNaoFazJus = false;
+            let isAbono = false;
+            let isAposentadoria = false;
+            let isEmAnaliseVTC = false;
+
+            const stLower = (processo.status || "").toLowerCase();
+
+            if (isVTC) {
+                // Combina palavras-chave de observacoes e status para garantir interpretação imune a erros de seleção
+                const strCombinada = obsLower + " " + stLower + " " + (processo.tema || "").toLowerCase();
+
+                if (strCombinada.includes("não faz jus") || strCombinada.includes("nao faz jus") || strCombinada.includes("indeferido")) {
+                    isNaoFazJus = true;
+                } 
+                else if (strCombinada.includes("devolvido") || strCombinada.includes("correção") || strCombinada.includes("correcao") || strCombinada.includes("pendencia") || strCombinada.includes("falta")) {
+                    isRealmenteDevolvido = true;
+                } 
+                else if (strCombinada.includes("finalizado") || strCombinada.includes("concluid")) {
+                    if (strCombinada.includes("abono")) {
+                        isAbono = true;
+                    } else {
+                        isAposentadoria = true; // Por padrão para VTC finalizada é Aposentadoria
+                    }
+                } 
+                else {
+                    isEmAnaliseVTC = true;
+                }
+            }
+
+            // Definindo a cor e ícone baseando-se no STATUS
+            const isEmAndamentoStatus = stLower.includes("análise") || stLower.includes("analise") || stLower.includes("andamento") || stLower.includes("exigencia") || stLower.includes("exigência") || stLower.includes("atendendo");
+
+            let classeCorLateral = isEmAndamentoStatus ? "border-left-warning" : "border-left-primary";
+            let corBadge = isEmAndamentoStatus ? "bg-warning text-dark" : "bg-primary";
+            let iconeBadge = isEmAndamentoStatus ? "bi-hourglass-split" : "bi-activity";
+            let statusDisplay = (processo.status || "EM ANÁLISE").toUpperCase();
+
+            // Override finalizado, devolvido, nao faz jus
+            if (stLower.includes("finalizado") || stLower.includes("concluido") || stLower.includes("concluída") || stLower.includes("concluído")) {
+                classeCorLateral = "border-left-success";
+                corBadge = "bg-success";
+                iconeBadge = "bi-check-circle-fill";
+                statusDisplay = "FINALIZADO";
+            } else if (stLower.includes("devolvido") || stLower.includes("correção") || stLower.includes("correcao") || stLower.includes("pendente") || isRealmenteDevolvido) {
+                classeCorLateral = "border-left-warning"; // Original era Amarelo (Warning) e não Danger
+                corBadge = "bg-warning text-dark";
+                iconeBadge = "bi-arrow-return-left";
+                statusDisplay = "DEVOLVIDO / PENDÊNCIA";
+            } else if (stLower.includes("não faz jus") || stLower.includes("nao faz jus") || stLower.includes("indeferido") || isNaoFazJus) {
+                classeCorLateral = "border-left-danger"; // Original era Vermelho (Danger) e não Dark
+                corBadge = "bg-danger";
+                iconeBadge = "bi-x-circle-fill";
+                statusDisplay = "NÃO FAZ JUS";
+            }
+            
+            // Fix para separar a cor pura do Bootstrap ('primary', 'warning', etc)
+            const nomeCorBase = corBadge.replace('bg-', '').replace(' text-dark', '');
+
+            // Exibição da Unidade Escolar ou Setor
+            let exibicaoEscola = escola || "SUA UNIDADE ESCOLAR";
+            if (isEmAndamentoStatus && processo.origem) {
+                exibicaoEscola = `<span class="fw-bold text-primary">SETOR DE ANÁLISE: ${processo.origem}</span>`;
+            }
+
+            // Lógica de Protocolo vs SEI vs DOE
+            let exibicaoProtocoloOuSEI = `<span>PROTOCOLO: <span class="text-primary">${protocolo}</span></span>`;
+            let exibicaoDataDOE = "";
+            let temDOE = false;
+
+            const isLicenca = tema.includes("LICENÇA") || tema.includes("LICENCA");
+            const isEvolucao = tema.includes("EVOLUÇÃO") || tema.includes("EVOLUCAO");
+
+            if (isLicenca || isEvolucao) {
+                exibicaoProtocoloOuSEI = `<span>NÚMERO DO SEI: <span class="text-${corBadge.replace('bg-', '')}">${protocolo}</span></span>`;
+            }
+
+            if (tema.includes("APOSENTADORIA")) {
+                // Regex aprimorada para aceitar tanto descrições longas quanto apenas "DOE" seguido de pontuações opcionais e a data
+                const regexDOE = /(?:PUBLICAÇÃO EM DOE|PUBLICACAO EM DOE|DOE)[\s\-,:]*([\d]{2}\/[\d]{2}\/[\d]{4})/i;
+                const match = obsLimpa.match(regexDOE);
+                if (match && match[1]) {
+                    // Estilo Opção 1 (Cinza Escuro Neutro)
+                    exibicaoDataDOE = `<span class="mx-2 text-muted fw-normal">|</span><span class="text-secondary"><i class="bi bi-newspaper me-1"></i> PUBLICAÇÃO EM DOE: <span class="fw-bold text-dark">${match[1]}</span></span>`;
+                    temDOE = true;
+                }
+            }
+
+            let linhaDatas = "";
+            if (dataEntrada) {
+                linhaDatas += `<span class="mx-2 text-muted fw-normal">|</span><span>ENTRADA: <span class="text-secondary fw-normal">${dataEntrada}</span></span>`;
+            }
+            if (dataSaida && !temDOE) {
+                linhaDatas += `<span class="mx-2 text-muted fw-normal">|</span><span>SAÍDA: <span class="text-secondary fw-normal">${dataSaida}</span></span>`;
+            }
+            linhaDatas += exibicaoDataDOE;
+
+            // --- LÓGICA DE FILA (AGORA VINDO PRONTA DO BACKEND VERCEL) ---
+            let infoFilaHtml = "";
+
+            if (isEmAnaliseVTC && processo._posicaoFila) {
+                const posicaoReal = processo._posicaoFila;
+                const diasEst = processo._diasEstimados || 60;
+                
+                const dataPrevisao = new Date();
+                dataPrevisao.setDate(dataPrevisao.getDate() + diasEst);
+                const dd = String(dataPrevisao.getDate()).padStart(2, '0');
+                const mm = String(dataPrevisao.getMonth() + 1).padStart(2, '0');
+                const yy = String(dataPrevisao.getFullYear()).slice(-2);
+                const dataFormatada = `${dd}/${mm}/${yy}`;
+                    
+                    infoFilaHtml = `
+                    <div class="mt-2 text-start">
+                        <div class="d-inline-flex align-items-center bg-warning bg-opacity-25 border border-warning border-opacity-50 rounded-3 px-3 py-1 mb-1" style="font-size: 0.75rem;">
+                            <span class="text-dark fw-bold me-3"><i class="bi bi-people-fill me-1"></i> POSIÇÃO NA FILA: ${posicaoReal}º</span>
+                            <span class="text-dark fw-bold"><i class="bi bi-calendar-event me-1"></i> PREVISÃO: ${dataFormatada}</span>
+                        </div>
+                        <div class="text-muted ms-1" style="font-size: 0.65rem; max-width: 90%;">
+                            <i class="bi bi-info-circle"></i> A previsão pode sofrer alterações pontuais conforme o aumento da demanda do setor.
+                        </div>
+                    </div>
+                    `;
+            }
+
+            const colCard = document.createElement("div");
+            colCard.className = "col-12 animate__animated animate__zoomIn";
+
+            let conteudoCard = `
+                <!-- Alerta de Demanda para Quinquenio e Contagem de Tempo -->
+                ${isQuinquenio || isContagemTempo ? `
+                <div class="alert border-0 shadow-sm mb-3 text-start" style="background-color: #fff4e5; border-radius: 12px;">
+                    <div class="d-flex">
+                        <i class="bi bi-info-circle-fill me-2 fs-5 text-warning"></i>
+                        <div class="small text-dark mt-1">
+                            <b>Aviso Legal (LC 173/2020):</b> Devido ao recente descongelamento do tempo de serviço, há uma alta demanda de processos de Contagem de Tempo e Quinquênio. Agradecemos a compreensão.
+                        </div>
+                    </div>
+                </div>
+                ` : ""}
+
+                <div class="card border-0 mb-4 mx-auto shadow-sm text-start w-100" style="border-radius: 12px; ${classeCorLateral.replace('border-left', 'border-left:')} !important;">
+                    <div class="card-body p-4 position-relative">
+                        <span class="badge ${corBadge} position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.75rem;">
+                            <i class="bi ${iconeBadge}"></i> ${statusDisplay}
+                        </span>
+                        
+                        <h5 class="fw-bold mb-0 text-dark" style="text-transform: uppercase; letter-spacing: 0.5px; font-size: 1.25rem;">${interessado}</h5>
+                        
+                        <div class="d-flex align-items-center flex-wrap pt-1 mb-1 fw-bold" style="font-size: 0.8rem; color: #868e96; letter-spacing: 0.2px;">
+                            <span class="badge bg-light text-secondary border border-secondary-subtle me-2" style="font-size: 0.70rem; letter-spacing: 0.5px;">TEMA: ${tema}</span>
+                            ${exibicaoProtocoloOuSEI}
+                            ${linhaDatas}
+                        </div>
+                        
+                        ${infoFilaHtml}
+                        
+                        <div class="d-flex justify-content-between align-items-center flex-wrap pt-3 mt-2 border-top" style="border-top-color: #f1f3f5 !important;">
+                            <p class="mb-0 d-flex align-items-center" style="font-size: 0.85rem; color: #6c757d; letter-spacing: 0.2px;">
+                                <i class="bi bi-building me-2 fs-5"></i> ${exibicaoEscola}
+                            </p>
+                            <button class="collapsed mt-2 mt-sm-0 shadow-sm btn-detalhes" type="button" data-bs-toggle="collapse" data-bs-target="#collapseDetalhe_${processo.id}" aria-expanded="false" style="background: none; border: 1px solid #e9ecef; color: #495057; font-weight: 500; font-size: 0.85rem; padding: 6px 14px; border-radius: 50px; display: inline-flex; align-items: center; cursor: pointer; transition: all 0.2s ease; background-color: #f8f9fa;">
+                                Detalhes do Processo <i class="bi bi-chevron-down" style="margin-left: 6px; font-size: 1rem; color: #adb5bd; transition: transform 0.3s ease;"></i>
+                            </button>
+                        </div>
+
+                        <div class="collapse mt-3" id="collapseDetalhe_${processo.id}">
+                            ${isRealmenteDevolvido ? `
+                                <div class="p-3 shadow-sm border-warning-subtle bg-warning-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-warning-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-exclamation-triangle-fill me-1"></i> Processo Analisado, mas devolvido para correções.</h6>
+                                    <p class="small text-dark mb-2" style="line-height: 1.6;">Olá! O seu processo chegou ao nosso setor no dia <strong>${dataEntrada || '---'}</strong> e informamos que ele já foi totalmente analisado pelo <strong>Responsável pela Emissão de VTC</strong>.</p>
+                                    <p class="small text-dark mb-2" style="line-height: 1.6;">Durante a conferência, constatamos algumas pendências ou inconsistências nos documentos enviados. Por isso, no dia <strong>${dataSaida || '---'}</strong>, o seu pedido precisou ser devolvido oficialmente para a sua escola de origem.</p>
+                                    <hr style="border-color: rgba(0,0,0,0.1);">
+                                    <p class="mb-0 small text-dark" style="line-height: 1.6;"><strong>O que fazer agora?</strong> Por favor, procure a Gerência ou a Secretaria da sua Unidade Escolar. Eles já receberam nossos apontamentos e saberão exatamente quais correções precisam fazer para reenviar o processo.</p>
+                                </div>
+                            ` : isNaoFazJus ? `
+                                <div class="p-3 shadow-sm border-danger-subtle bg-danger-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-danger-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-sign-stop-fill me-1"></i> Análise Concluída: Requisitos Não Atingidos no Momento</h6>
+                                    <p class="small text-dark mb-2" style="line-height: 1.6;">A sua documentação deu entrada em <strong>${dataEntrada || '---'}</strong> e foi minuciosamente conferida pelo <strong>Responsável pela Emissão de VTC</strong>. O processo foi indeferido na data de <strong>${dataSaida || '---'}</strong>.</p>
+                                    <p class="small text-dark mb-0" style="line-height: 1.6;">Embasado na legislação previdenciária vigente do Estado de São Paulo (<strong>Emenda Constitucional nº 49/2020 e Lei Complementar Estadual nº 1.354/2020</strong>), informamos que, na data atual, o(a) servidor(a) <strong>não faz jus</strong> à concessão do benefício pleiteado, pois não atingiu a totalidade dos requisitos legais exigidos por lei.</p>
+                                </div>
+                            ` : isAbono ? `
+                                <div class="p-3 shadow-sm border-info-subtle bg-info-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-primary-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-check-all me-1"></i> 1ª Fase Concluída: Validação de Tempo para Abono</h6>
+                                    <p class="small text-dark mb-2" style="line-height: 1.6;">Parabéns! O seu tempo de serviço enviado em <strong>${dataEntrada || '---'}</strong> foi validado pelo <strong>Responsável pela Emissão de VTC</strong> no dia <strong>${dataSaida || '---'}</strong>. Você atendeu aos requisitos da <strong>E.C. nº 49/2020 e L.C. nº 1.354/2020</strong> para o Abono de Permanência!</p>
+                                    <hr style="border-color: rgba(0,0,0,0.1);">
+                                    <p class="mb-0 small text-dark" style="line-height: 1.6;"><strong>Próximos Passos:</strong> O documento que emitimos é apenas a primeira fase e a liberação financeira não é automática. A Gerência da sua Unidade Escolar deve providenciar a documentação para fins de pagamento e encaminhar para inclusão no sistema.</p>
+                                </div>
+                            ` : isAposentadoria ? `
+                                <div class="p-3 shadow-sm border-info-subtle bg-info-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-primary-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-check-all me-1"></i> VTC Atualizada: Preparada para Aposentadoria</h6>
+                                    <p class="small text-dark mb-2" style="line-height: 1.6;">Informamos que a revisão final do seu tempo de contribuição, solicitada em <strong>${dataEntrada || '---'}</strong>, foi deferida e assinada pelo <strong>Responsável pela Emissão de VTC</strong> no dia <strong>${dataSaida || '---'}</strong>.</p>
+                                    <p class="small text-dark mb-2" style="line-height: 1.6;">Sua Validação de Tempo de Contribuição está atualizada, atestando o direito à aposentadoria sob as regras do Estado de São Paulo.</p>
+                                    <hr style="border-color: rgba(0,0,0,0.1);">
+                                    <p class="mb-0 small text-dark" style="line-height: 1.6;"><strong>Próxima Ação Necessária:</strong> Para que a sua aposentadoria seja publicada em Diário Oficial, procure imediatamente a secretaria da sua Unidade Escolar e formalize o pedido final de concessão (Trâmite de Aposentadoria).</p>
+                                </div>
+                            ` : `
+                                <div class="p-3 shadow-sm border-${nomeCorBase}-subtle bg-${nomeCorBase}-subtle bg-opacity-10" style="border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <h6 class="fw-bold text-${nomeCorBase}-emphasis mb-2" style="font-size: 0.9rem;"><i class="bi bi-chat-left-text-fill me-1"></i> OBSERVAÇÃO:</h6>
+                                    <p class="small text-dark mb-0" style="line-height: 1.6;">
+                                        <i>"${obsLimpa || 'Sem detalhes adicionais disponíveis.'}"</i>
+                                    </p>
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            colCard.innerHTML = conteudoCard;
+            resultadoArea.appendChild(colCard);
+        }
+
+    } catch (error) {
+        console.error("Erro na consulta unificada:", error);
+        exibirResultado("❌ Falha na conexão com os servidores. Tente novamente.", "danger");
     }
 }
+
+function exibirResultado(mensagem, tipo) {
+    let resultado = document.getElementById("resultadoProcesso");
+    resultado.className = `mt-4 p-3 rounded bg-${tipo}-subtle text-${tipo}-emphasis border-start border-4 border-${tipo === 'light' ? 'primary' : tipo} shadow-sm`;
+    resultado.innerHTML = mensagem;
+}
+
 
 
 
@@ -567,7 +886,7 @@ function simularContribuicao() {
         <!-- Card Extra: Fundamento do Cálculo -->
         <div class="card border-${fundamentoCor} shadow-sm mb-4">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="bg-${fundamentoCor}-subtle p-3 rounded-circle">
+                <div class="bg-${fundamentoCor}-subtle p-3 rounded-3">
                     <i class="bi ${fundamentoIcone} fs-3 text-${fundamentoCor}"></i>
                 </div>
                 <div>

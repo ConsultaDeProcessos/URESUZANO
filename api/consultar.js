@@ -1,5 +1,5 @@
 // ============================================================
-// API VERCEL — ENDPOINT DE CONSULTA SEGURA
+// API VERCEL — ENDPOINT DE CONSULTA SEGURA 
 // Versão 2.0 — Pós-Pentest (Todas as correções aplicadas)
 // ============================================================
 

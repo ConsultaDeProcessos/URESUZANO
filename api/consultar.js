@@ -105,12 +105,12 @@ export default async function handler(req, res) {
     };
 
     try {
-        const nomeBusca = nomeSeguro.replace(/\s+/g, '*');
-
-        const [resSefrep, resSeape] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?protocolo=eq.${protocolo}&select=*, { headers: defaultHeaders }),
-            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?protocolo=eq.${protocolo}&select=*, { headers: defaultHeaders })
-        ]);
+             
+const [resSefrep, resSeape] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?protocolo=eq.${encodeURIComponent(protocoloLimpo)}&select=*`, { headers: defaultHeaders }),
+    fetch(`${SUPABASE_URL}/rest/v1/seape_registros?protocolo=eq.${encodeURIComponent(protocoloLimpo)}&select=*`, { headers: defaultHeaders })
+]);
+        
 
         if (resSefrep.status === 429 || resSeape.status === 429) {
             return res.status(429).json({ error: "Limite de consultas atingido no Banco de Dados. Aguarde." });

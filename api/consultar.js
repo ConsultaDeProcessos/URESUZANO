@@ -146,6 +146,17 @@ const [resSefrep, resSeape] = await Promise.all([
                 });
             }
         }
+        // --- CÁLCULO DE POSIÇÃO NA FILA ---
+        if (filaAtivaVTC.length > 0) {
+            todosResultados = todosResultados.map(p => {
+                const index = filaAtivaVTC.findIndex(f => f.id === p.id);
+                if (index !== -1) {
+                    const posicao = index + 1;
+                    return { ...p, _posicaoFila: posicao, _diasEstimados: posicao * 15 };
+                }
+                return p;
+            });
+        }
 
         return res.status(200).json({
             resultados: todosResultados,

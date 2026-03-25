@@ -97,7 +97,12 @@ async function consultarProcesso() {
         }
 
         // O Proxy da Vercel já fez todo o trabalho sujo de buscar nas duas tabelas
-        const todosResultados = await resProxy.json();
+       /* Substitua as linhas 100 e 101 do script.js por estas duas: */
+        
+const respostaDoServidor = await resProxy.json();
+const todosResultados = respostaDoServidor.resultados || []; 
+        
+// O resto do seu código (seus ifs e o forEach) continuam iguais!
 
       /* Substitua o bloco da linha 102 até a 105 por este código de segurança */
 // 1. VERIFICAÇÃO DE ERRO DO BANCO

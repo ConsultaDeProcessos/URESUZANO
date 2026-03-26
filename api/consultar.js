@@ -159,8 +159,7 @@ const [resSefrep, resSeape] = await Promise.all([
         }
 
         return res.status(200).json({
-            resultados: todosResultados,
-            filaVTC: filaAtivaVTC
+            resultados: todosResultados
         });
     } catch (error) {
         console.error("Erro na Vercel API:", error);

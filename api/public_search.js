@@ -98,11 +98,16 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Erro interno no servidor: Credenciais não encontradas." });
     }
 
+    // Normalização da URL: remove /rest/v1 se o usuário já tiver colocado na variável de ambiente
+    const baseUrl = SUPABASE_URL.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+    const finalUrl = `${baseUrl}/rest/v1`;
+
     const defaultHeaders = {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json'
     };
+
     try {
         // Criamos variantes da busca para ser mais resiliente
         const protocoloSoNumeros = protocoloLimpo.replace(/[^A-Z0-9]/g, '');
@@ -113,8 +118,8 @@ export default async function handler(req, res) {
         const searchOR = `or=(protocolo.ilike.*${queryTerm}*,nome.ilike.*${queryTerm}*,protocolo.ilike.*${queryTermNumeric}*,nome.ilike.*${queryTermNumeric}*)`;
 
         const [resSefrep, resSeape] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
-            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
+            fetch(`${finalUrl}/sefrep_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
+            fetch(`${finalUrl}/seape_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
         ]);
 
         if (resSefrep.status === 429 || resSeape.status === 429) {
@@ -142,7 +147,7 @@ export default async function handler(req, res) {
 
         let filaAtivaVTC = [];
         if (temVTCAtivo) {
-            const resFila = await fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?tema=ilike.*VTC*&or=(status.ilike.*lise*,status.ilike.*andamento*,status.ilike.*exig*)&select=id,data_entrada,created_at`, { headers: defaultHeaders });
+            const resFila = await fetch(`${finalUrl}/sefrep_registros?tema=ilike.*VTC*&or=(status.ilike.*lise*,status.ilike.*andamento*,status.ilike.*exig*)&select=id,data_entrada,created_at`, { headers: defaultHeaders });
             if (resFila.ok) {
                 filaAtivaVTC = await resFila.json();
                 filaAtivaVTC.sort((a, b) => {

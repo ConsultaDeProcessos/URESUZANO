@@ -1,8 +1,79 @@
+/* troca de telas */
+
+/**
+ * Alterna a visibilidade das seções (Início, Simulador, etc)
+ * Melhora a experiência do usuário fechando menus e limpando resultados.
+ */
+function mostrar(id) {
+    // Mapeamento de IDs para garantir que o assistente de bolso funcione
+    const mapaId = {
+        'consultar': 'processo',
+        'solicitar': 'contagem',
+        'documentos': 'documentos',
+        'inicio': 'inicio',
+        'requisitos': 'requisitos',
+        'simulador': 'simulador'
+    };
+
+    const targetId = mapaId[id] || id;
+
+    const telas = document.querySelectorAll(".tela");
+    telas.forEach(tela => tela.style.display = "none");
+
+    const target = document.getElementById(targetId);
+    if (target) {
+        target.style.display = "block";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Lógica de visibilidade dos botões de navegação
+    const navItemInicio = document.getElementById('nav-item-inicio');
+    const navItemRequisitos = document.getElementById('nav-item-requisitos');
+    const navItemDocumentos = document.getElementById('nav-item-documentos');
+
+    if (targetId === 'inicio') {
+        if (navItemInicio) navItemInicio.style.display = 'none';
+        if (navItemRequisitos) navItemRequisitos.style.display = 'none';
+        if (navItemDocumentos) navItemDocumentos.style.display = 'none';
+    } else {
+        if (navItemInicio) navItemInicio.style.display = 'block';
+        if (navItemRequisitos) navItemRequisitos.style.display = 'none';
+        if (navItemDocumentos) navItemDocumentos.style.display = 'none';
+    }
+
+    // Fecha o menu mobile do Bootstrap
+    const navBar = document.getElementById('navMenu');
+    if (navBar && navBar.classList.contains('show')) {
+        const bootstrapCollapse = bootstrap.Collapse.getInstance(navBar);
+        if (bootstrapCollapse) bootstrapCollapse.hide();
+    }
+}
+
+// Lógica para abrir aba específica via parâmetro na URL (?aba=id)
 document.addEventListener("DOMContentLoaded", () => {
-    // Inicializa Popovers (Para as tabelas interativas)
-    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-    [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+    const urlParams = new URLSearchParams(window.location.search);
+    const aba = urlParams.get('aba');
+    if (aba) {
+        // Pequeno atraso para garantir que tudo carregou
+        setTimeout(() => mostrar(aba), 100);
+    }
 });
+
+/**
+ * Alterna a visibilidade do card de Regras de Paridade e Integralidade
+ */
+function toggleRegrasFinanceiras() {
+    const content = document.getElementById('collapseRegrasFinanceiras');
+    const btn = document.getElementById('btnToggleRegras');
+
+    if (content.style.display === "none") {
+        content.style.display = "block";
+        btn.innerHTML = 'Clique para recolher <i class="bi bi-chevron-up ms-1"></i>';
+    } else {
+        content.style.display = "none";
+        btn.innerHTML = 'Clique para expandir <i class="bi bi-chevron-down ms-1"></i>';
+    }
+}
 
 
 /**
@@ -29,37 +100,6 @@ async function consultarProcesso() {
         return;
     }
 
-    // 4. MENSAGEM HUMANIZADA POR STATUS DE VTC
-    const getHumanMessage = (status) => {
-        const messages = {
-            'EM ANDAMENTO': {
-                title: 'Tudo caminhando bem!',
-                text: 'Seu processo está seguindo o fluxo normal e em análise pela nossa equipe. Estamos cuidando de tudo.',
-                color: 'info',
-                icon: 'bi-gear-wide-connected'
-            },
-            'PENDENTE': {
-                title: 'Aumento de Demanda',
-                text: 'Tivemos um grande volume de pedidos recentemente. Pode levar um pouquinho mais de tempo, mas sua vez está chegando!',
-                color: 'warning',
-                icon: 'bi-exclamation-triangle'
-            },
-            'ATRASADO': {
-                title: 'Sentimos muito pela demora',
-                text: 'Estamos com uma demanda muito acima do esperado, o que gerou um atraso. Estamos trabalhando duro para regularizar o quanto antes.',
-                color: 'danger',
-                icon: 'bi- clock-history'
-            },
-            'CONCLUÍDO': {
-                title: 'Processo Finalizado!',
-                text: 'Boas notícias! Sua análise foi concluída com sucesso. Verifique as observações abaixo.',
-                color: 'success',
-                icon: 'bi-check-circle'
-            }
-        };
-        return messages[status.toUpperCase()] || { title: 'Em Análise', text: 'Seu processo está sendo processado por nossa equipe técnica.', color: 'primary', icon: 'bi-info-circle' };
-    };
-
     // 1. Limpeza e Feedback Visual (Moderno)
     resultadoArea.innerHTML = `
         <div class="text-center py-5 w-100 animate__animated animate__fadeIn">
@@ -69,26 +109,13 @@ async function consultarProcesso() {
     `;
     resultadoArea.className = "mt-4 p-4 card-glass border-0 d-flex align-items-center justify-content-center shadow-lg";
 
-    // -------------------------------------------------------------
-    // AS CHAVES E A URL DO SUPABASE NÃO EXISTEM MAIS NESTE ARQUIVO! 
-    // ESTAMOS 100% PROTEGIDOS PELA API DA VERCEL.
-    // -------------------------------------------------------------
-
     try {
-        // 2. Consulta direcionada ao nosso "Guarda-Costas" (API do Vercel remotamente do Github Pages)
+        // 2. Consulta direcionada ao nosso Proxy na Vercel
         const encodedProtocol = encodeURIComponent(protocoloDigitado);
         
-        // Chamando o link absoluto onde nossa API Backend está hospedada agora!
-        // E enviando o token de segurança Anti-Robô no cabeçalho
-      /* --- SUBSTITUA O BLOCO DA LINHA 83 POR ESTE --- */
-const resProxy = await fetch("https://admin-ure-privado.vercel.app/api/public_search?protocolo=" + encodedProtocol, {
-    method: 'GET',
-    headers: {
-        'X-Turnstile-Token': cfToken
-    }
-});
-const todosResultados = await resProxy.json();
-console.log("Dados recebidos do servidor:", todosResultados); // ISSO VAI NOS MOSTRAR A VERDADE NO CONSOLE
+        const resProxy = await fetch("https://admin-ure-privado.vercel.app/api/public_search?protocolo=" + encodedProtocol, {
+            method: 'GET',
+            headers: {
                 'X-Turnstile-Token': cfToken
             }
         });
@@ -102,33 +129,25 @@ console.log("Dados recebidos do servidor:", todosResultados); // ISSO VAI NOS MO
             throw new Error("Erro de comunicação com o servidor seguro Vercel.");
         }
 
-        // O Proxy da Vercel já fez todo o trabalho sujo de buscar nas duas tabelas
-       /* Substitua as linhas 100 e 101 do script.js por estas duas: */
+        const respostaDoServidor = await resProxy.json();
+        const todosResultados = respostaDoServidor.resultados || []; 
         
-const respostaDoServidor = await resProxy.json();
-const todosResultados = respostaDoServidor.resultados || []; 
-        
-// O resto do seu código (seus ifs e o forEach) continuam iguais!
+        console.log("Dados recebidos do servidor:", todosResultados);
 
-      /* Substitua o bloco da linha 102 até a 105 por este código de segurança */
-// 1. VERIFICAÇÃO DE ERRO DO BANCO
-if (!Array.isArray(todosResultados)) {
-    console.error("ERRO COMPLETO DO BANCO:", todosResultados);
-    exibirResultado(`❌ O servidor respondeu um erro: ${todosResultados.message || 'Falha na conexão com o Banco'}`);
-    return;
-}
-// 2. VERIFICAÇÃO DE RESULTADO VAZIO
-if (todosResultados.length === 0) {
-    exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
-    return;
-}
-if (todosResultados.length === 0) {
-    exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
-    return;
-}
+        // 1. VERIFICAÇÃO DE ERRO DO BANCO
+        if (!Array.isArray(todosResultados)) {
+            console.error("ERRO COMPLETO DO BANCO:", todosResultados);
+            exibirResultado(`❌ O servidor respondeu um erro: ${respostaDoServidor.message || 'Falha na conexão com o Banco'}`);
+            return;
+        }
+
+        // 2. VERIFICAÇÃO DE RESULTADO VAZIO
+        if (todosResultados.length === 0) {
+            exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
+            return;
+        }
 
         // --- LÓGICA DE DEDUPLICAÇÃO ---
-        // (Agrupa apenas em caso de duplicação do mesmo tema, embora os IDs sejam únicos)
         const temasUnicos = new Map();
         
         todosResultados.forEach(p => {
@@ -148,30 +167,14 @@ if (todosResultados.length === 0) {
             const partes = str.split('T')[0].split('-');
             return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : null;
         };
-
-        // --- PREPARAÇÃO DA FILA VTC UNIFICADA (Apenas 1 Request) ---
-        // Verificamos se há algum processo VTC "Em Andamento/Análise" nos resultados antes de buscar a fila inteira.
-        const temVTCAtivo = resultadosFiltrados.some(p => {
-            const tema = (p.tema || "").toUpperCase();
-            const stLower = (p.status || "").toLowerCase();
-            const obs = (p.observacoes || "").toLowerCase();
-            return tema.includes("VTC") && 
-                   !obs.includes("finalizado") && 
-                   !obs.includes("analise concluida") && 
-                   !obs.includes("devolvido") &&
-                   !obs.includes("não faz jus") &&
-                   !obs.includes("nao faz jus");
-        });
-
-        // A fila global agora é calculada nativamente pela API Vercel no Backend para máxima segurança.
     
-    // --- FUNÇÃO DE ESCAPE PARA PREVENÇÃO DE XSS ---
-    const escapeHTML = (str) => {
-        if (!str) return "";
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    };
+        // --- FUNÇÃO DE ESCAPE PARA PREVENÇÃO DE XSS ---
+        const escapeHTML = (str) => {
+            if (!str) return "";
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        };
 
         // 3. Renderização Premium
         for (const processo of resultadosFiltrados) {
@@ -201,7 +204,7 @@ if (todosResultados.length === 0) {
             const stLower = (processo.status || "").toLowerCase();
 
             if (isVTC) {
-                // Combina palavras-chave de observacoes e status para garantir interpretação imune a erros de seleção
+                // Combina palavras-chave de observacoes e status
                 const strCombinada = obsLower + " " + stLower + " " + (processo.tema || "").toLowerCase();
 
                 if (strCombinada.includes("não faz jus") || strCombinada.includes("nao faz jus") || strCombinada.includes("indeferido")) {
@@ -237,18 +240,17 @@ if (todosResultados.length === 0) {
                 iconeBadge = "bi-check-circle-fill";
                 statusDisplay = "FINALIZADO";
             } else if (stLower.includes("devolvido") || stLower.includes("correção") || stLower.includes("correcao") || stLower.includes("pendente") || isRealmenteDevolvido) {
-                classeCorLateral = "border-left-warning"; // Original era Amarelo (Warning) e não Danger
+                classeCorLateral = "border-left-warning"; 
                 corBadge = "bg-warning text-dark";
                 iconeBadge = "bi-arrow-return-left";
                 statusDisplay = "DEVOLVIDO / PENDÊNCIA";
             } else if (stLower.includes("não faz jus") || stLower.includes("nao faz jus") || stLower.includes("indeferido") || isNaoFazJus) {
-                classeCorLateral = "border-left-danger"; // Original era Vermelho (Danger) e não Dark
+                classeCorLateral = "border-left-danger"; 
                 corBadge = "bg-danger";
                 iconeBadge = "bi-x-circle-fill";
                 statusDisplay = "NÃO FAZ JUS";
             }
             
-            // Fix para separar a cor pura do Bootstrap ('primary', 'warning', etc)
             const nomeCorBase = corBadge.replace('bg-', '').replace(' text-dark', '');
 
             // Exibição da Unidade Escolar ou Setor
@@ -270,11 +272,9 @@ if (todosResultados.length === 0) {
             }
 
             if (tema.includes("APOSENTADORIA")) {
-                // Regex aprimorada para aceitar tanto descrições longas quanto apenas "DOE" seguido de pontuações opcionais e a data
                 const regexDOE = /(?:PUBLICAÇÃO EM DOE|PUBLICACAO EM DOE|DOE)[\s\-,:]*([\d]{2}\/[\d]{2}\/[\d]{4})/i;
                 const match = obsLimpa.match(regexDOE);
                 if (match && match[1]) {
-                    // Estilo Opção 1 (Cinza Escuro Neutro)
                     exibicaoDataDOE = `<span class="mx-2 text-muted fw-normal">|</span><span class="text-secondary"><i class="bi bi-newspaper me-1"></i> PUBLICAÇÃO EM DOE: <span class="fw-bold text-dark">${match[1]}</span></span>`;
                     temDOE = true;
                 }
@@ -289,7 +289,7 @@ if (todosResultados.length === 0) {
             }
             linhaDatas += exibicaoDataDOE;
 
-            // --- LÓGICA DE FILA (AGORA VINDO PRONTA DO BACKEND VERCEL) ---
+            // --- LÓGICA DE FILA (VINDO DO BACKEND VERCEL) ---
             let infoFilaHtml = "";
 
             if (isEmAnaliseVTC && processo._posicaoFila) {
@@ -332,7 +332,7 @@ if (todosResultados.length === 0) {
                 </div>
                 ` : ""}
 
-                <div class="card border-0 mb-4 mx-auto shadow-sm text-start w-100" style="border-radius: 12px; ${classeCorLateral.replace('border-left', 'border-left:')} !important;">
+                <div class="card border-0 mb-4 mx-auto shadow-sm text-start w-100" style="border-radius: 12px; border-left: 4px solid var(--bs-${nomeCorBase}) !important;">
                     <div class="card-body p-4 position-relative">
                         <span class="badge ${corBadge} position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.75rem;">
                             <i class="bi ${iconeBadge}"></i> ${statusDisplay}
@@ -909,7 +909,7 @@ function simularContribuicao() {
         <!-- Card Extra: Fundamento do Cálculo -->
         <div class="card border-${fundamentoCor} shadow-sm mb-4">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="bg-${fundamentoCor}-subtle p-3 rounded-3">
+                <div class="bg-${fundamentoCor}-subtle p-3 rounded-circle">
                     <i class="bi ${fundamentoIcone} fs-3 text-${fundamentoCor}"></i>
                 </div>
                 <div>

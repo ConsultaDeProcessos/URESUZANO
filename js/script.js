@@ -80,9 +80,15 @@ async function consultarProcesso() {
         
         // Chamando o link absoluto onde nossa API Backend está hospedada agora!
         // E enviando o token de segurança Anti-Robô no cabeçalho
-       const resProxy = await fetch(`https://admin-ure-privado.vercel.app/api/public_search?protocolo=${encodedProtocol}`, { 
-            method: 'GET',
-            headers: {
+      /* --- SUBSTITUA O BLOCO DA LINHA 83 POR ESTE --- */
+const resProxy = await fetch("https://admin-ure-privado.vercel.app/api/public_search?protocolo=" + encodedProtocol, {
+    method: 'GET',
+    headers: {
+        'X-Turnstile-Token': cfToken
+    }
+});
+const todosResultados = await resProxy.json();
+console.log("Dados recebidos do servidor:", todosResultados); // ISSO VAI NOS MOSTRAR A VERDADE NO CONSOLE
                 'X-Turnstile-Token': cfToken
             }
         });

@@ -111,11 +111,16 @@ export default async function handler(req, res) {
     try {
         // Criamos variantes da busca para ser mais resiliente
         const protocoloSoNumeros = protocoloLimpo.replace(/[^A-Z0-9]/g, '');
+        const parteFinal = protocoloLimpo.length > 6 ? protocoloLimpo.slice(-6) : protocoloLimpo;
+        
         const queryTerm = encodeURIComponent(protocoloLimpo);
         const queryTermNumeric = encodeURIComponent(protocoloSoNumeros);
+        const queryTermFinal = encodeURIComponent(parteFinal);
 
-        // Busca ultra-flexível: Tenta encontrar o termo original ou a versão sem símbolos em ambas as colunas
-        const searchOR = `or=(protocolo.ilike.*${queryTerm}*,nome.ilike.*${queryTerm}*,protocolo.ilike.*${queryTermNumeric}*,nome.ilike.*${queryTermNumeric}*)`;
+        // Busca radical: Termo original, versão numérica ou apenas os últimos 6 caracteres
+        const searchOR = `or=(protocolo.ilike.*${queryTerm}*,nome.ilike.*${queryTerm}*,protocolo.ilike.*${queryTermNumeric}*,nome.ilike.*${queryTermNumeric}*,protocolo.ilike.*${queryTermFinal}*,nome.ilike.*${queryTermFinal}*)`;
+
+        console.error(`[DIAGNOSTICO] Buscando: ${protocoloLimpo} | Termo Final: ${parteFinal} | URL: ${finalUrl}`);
 
         const [resSefrep, resSeape] = await Promise.all([
             fetch(`${finalUrl}/sefrep_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
@@ -129,12 +134,21 @@ export default async function handler(req, res) {
         const dadosSefrep = await resSefrep.json();
         const dadosSeape = await resSeape.json();
 
-        console.log(`[Busca] Protocolo: ${protocoloLimpo} | SEFREP: ${dadosSefrep?.length || 0} | SEAPE: ${dadosSeape?.length || 0}`);
+        console.error(`[RESULTADO] SEFREP: ${dadosSefrep?.length || 0} registros | SEAPE: ${dadosSeape?.length || 0} registros`);
 
         let todosResultados = [
             ...(dadosSefrep || []).map(p => ({ ...p, origem: 'SEFREP' })),
             ...(dadosSeape || []).map(p => ({ ...p, origem: 'SEAPE' }))
         ];
+
+        // Se nada foi encontrado, vamos logar os primeiros 1-2 itens da tabela SEFREP apenas para diagnosticar se a tabela existe e tem dados (LIMITADO A DEBUG)
+        if (todosResultados.length === 0) {
+            const resDebug = await fetch(`${finalUrl}/sefrep_registros?select=protocolo&limit=1`, { headers: defaultHeaders });
+            if (resDebug.ok) {
+                const debugData = await resDebug.json();
+                console.error(`[DEBUG DB] A tabela tem dados? Primeiro protocolo encontrado: ${debugData[0]?.protocolo || 'Nenhum'}`);
+            }
+        }
 
         // Fila VTC (apenas se há VTC ativo)
         const temVTCAtivo = todosResultados.some(p => {

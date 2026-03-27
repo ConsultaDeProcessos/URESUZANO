@@ -107,8 +107,8 @@ export default async function handler(req, res) {
     try {
              
 const [resSefrep, resSeape] = await Promise.all([
-    fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?protocolo=eq.${encodeURIComponent(protocoloLimpo)}&select=*`, { headers: defaultHeaders }),
-    fetch(`${SUPABASE_URL}/rest/v1/seape_registros?protocolo=eq.${encodeURIComponent(protocoloLimpo)}&select=*`, { headers: defaultHeaders })
+    fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?protocolo=eq.${encodeURIComponent(protocoloLimpo)}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
+    fetch(`${SUPABASE_URL}/rest/v1/seape_registros?protocolo=eq.${encodeURIComponent(protocoloLimpo)}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
 ]);
         
 

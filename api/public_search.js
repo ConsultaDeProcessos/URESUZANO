@@ -103,14 +103,18 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json'
     };
-
     try {
-             
-        const searchArg = `%${protocoloLimpo}%`; // Usando coringas para busca flexível
-        
+        // Criamos variantes da busca para ser mais resiliente
+        const protocoloSoNumeros = protocoloLimpo.replace(/[^A-Z0-9]/g, '');
+        const queryTerm = encodeURIComponent(protocoloLimpo);
+        const queryTermNumeric = encodeURIComponent(protocoloSoNumeros);
+
+        // Busca ultra-flexível: Tenta encontrar o termo original ou a versão sem símbolos em ambas as colunas
+        const searchOR = `or=(protocolo.ilike.*${queryTerm}*,nome.ilike.*${queryTerm}*,protocolo.ilike.*${queryTermNumeric}*,nome.ilike.*${queryTermNumeric}*)`;
+
         const [resSefrep, resSeape] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?or=(protocolo.ilike.*${encodeURIComponent(protocoloLimpo)}*,nome.ilike.*${encodeURIComponent(protocoloLimpo)}*)&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
-            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?or=(protocolo.ilike.*${encodeURIComponent(protocoloLimpo)}*,nome.ilike.*${encodeURIComponent(protocoloLimpo)}*)&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
+            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
+            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
         ]);
 
         if (resSefrep.status === 429 || resSeape.status === 429) {

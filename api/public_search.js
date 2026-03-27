@@ -106,9 +106,11 @@ export default async function handler(req, res) {
 
     try {
              
+        const searchArg = `%${protocoloLimpo}%`; // Usando coringas para busca flexível
+        
         const [resSefrep, resSeape] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?protocolo=ilike.${encodeURIComponent(protocoloLimpo)}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
-            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?protocolo=ilike.${encodeURIComponent(protocoloLimpo)}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
+            fetch(`${SUPABASE_URL}/rest/v1/sefrep_registros?or=(protocolo.ilike.*${encodeURIComponent(protocoloLimpo)}*,nome.ilike.*${encodeURIComponent(protocoloLimpo)}*)&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
+            fetch(`${SUPABASE_URL}/rest/v1/seape_registros?or=(protocolo.ilike.*${encodeURIComponent(protocoloLimpo)}*,nome.ilike.*${encodeURIComponent(protocoloLimpo)}*)&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
         ]);
 
         if (resSefrep.status === 429 || resSeape.status === 429) {

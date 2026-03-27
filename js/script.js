@@ -80,7 +80,7 @@ async function consultarProcesso() {
         
         // Chamando o link absoluto onde nossa API Backend está hospedada agora!
         // E enviando o token de segurança Anti-Robô no cabeçalho
-        const resProxy = await fetch(`https://uresuzano.vercel.app/api/consultar?protocolo=${encodedProtocol}`, { 
+       const resProxy = await fetch(`https://admin-ure-privado.vercel.app/api/public_search?protocolo=${encodedProtocol}`, { 
             method: 'GET',
             headers: {
                 'X-Turnstile-Token': cfToken

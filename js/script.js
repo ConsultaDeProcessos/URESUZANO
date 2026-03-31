@@ -98,29 +98,29 @@ async function consultarProcesso() {
         }
 
         const respostaDoServidor = await resProxy.json();
-        console.log("Dados recebidos do servidor:", respostaDoServidor); 
+        console.log("DEBUG: Resposta Bruta do Servidor:", respostaDoServidor); 
         
-        // CORREÇÃO: A API pode retornar um array direto [...] OU um objeto {resultados: [...]}
-        // Precisamos aceitar ambos os formatos para compatibilidade
-        let todosResultados;
+        let todosResultados = [];
         if (Array.isArray(respostaDoServidor)) {
-            // Formato direto: o servidor retornou um array puro [...]
             todosResultados = respostaDoServidor;
         } else if (respostaDoServidor && Array.isArray(respostaDoServidor.resultados)) {
-            // Formato encapsulado: o servidor retornou {resultados: [...]}
             todosResultados = respostaDoServidor.resultados;
-        } else {
-            // Formato inesperado ou erro do banco
-            console.error("ERRO COMPLETO DO BANCO:", respostaDoServidor);
-            exibirResultado(`❌ O servidor respondeu um erro: ${respostaDoServidor?.error || respostaDoServidor?.message || 'Falha na conexão com o Banco'}`);
+        } else if (respostaDoServidor && typeof respostaDoServidor === 'object') {
+            // Tenta achar qualquer propriedade que seja um array (caso mude o nome)
+            const keys = Object.keys(respostaDoServidor);
+            const arrayKey = keys.find(k => Array.isArray(respostaDoServidor[k]));
+            if (arrayKey) todosResultados = respostaDoServidor[arrayKey];
+        }
+
+        console.log("DEBUG: Array Final Extraído:", todosResultados);
+        console.log("DEBUG: Tamanho do Array:", todosResultados.length);
+
+        // VERIFICAÇÃO DE RESULTADO VAZIO
+        if (!todosResultados || todosResultados.length === 0) {
+            exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
             return;
         }
 
-// VERIFICAÇÃO DE RESULTADO VAZIO
-if (todosResultados.length === 0) {
-    exibirResultado(`⚠️ Nenhum processo localizado para o protocolo: <b>${protocoloDigitado}</b>.`);
-    return;
-}
 
         // --- LÓGICA DE DEDUPLICAÇÃO ---
         // (Agrupa apenas em caso de duplicação do mesmo tema, embora os IDs sejam únicos)

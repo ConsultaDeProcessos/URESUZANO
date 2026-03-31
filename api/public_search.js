@@ -36,6 +36,29 @@ setInterval(() => {
     }
 }, RATE_LIMIT_WINDOW_MS * 2);
 
+// === VERIFICAÇÃO TURNSTILE (Server-Side) ===
+async function verificarTurnstile(token) {
+    if (!token) return false;
+    const { TURNSTILE_SECRET_KEY } = process.env;
+    if (!TURNSTILE_SECRET_KEY) {
+        console.error("[SEGURANÇA] TURNSTILE_SECRET_KEY não configurada no servidor.");
+        return true; // Bypass de segurança se a chave não estiver lá (para não quebrar o site)
+    }
+
+    try {
+        const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `secret=${encodeURIComponent(TURNSTILE_SECRET_KEY)}&response=${encodeURIComponent(token)}`
+        });
+        const data = await res.json();
+        return data.success;
+    } catch (e) {
+        console.error("Erro ao validar Turnstile:", e);
+        return false;
+    }
+}
+
 // === HANDLER PRINCIPAL ===
 export default async function handler(req, res) {
 
@@ -78,6 +101,14 @@ export default async function handler(req, res) {
         return res.status(429).json({ error: "Limite de consultas atingido (10 por minuto). Aguarde um momento e tente novamente." });
     }
 
+    // 5. VERIFICAÇÃO DE ROBÔ (TURNSTILE)
+    const turnstileToken = req.headers['x-turnstile-token'];
+    const isHuman = await verificarTurnstile(turnstileToken);
+    
+    if (!isHuman) {
+        return res.status(401).json({ error: "Verificação Anti-Robô inválida ou expirada. Atualize a página." });
+    }
+
     // 5. VALIDAÇÃO E SANITIZAÇÃO DO INPUT
     // 5. VALIDAÇÃO E SANITIZAÇÃO DO PROTOCOLO (Novo)
     const { protocolo } = req.query;
@@ -85,17 +116,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Por favor, digite o número do protocolo." });
     }
     // Limpa espaços e garante que o protocolo esteja em maiúsculas
-    const protocoloLimpo = protocolo.trim().toUpperCase();
-    // Verificação de segurança básica (mínimo de 5 caracteres para um protocolo real)
+    // ANTI-VAZAMENTO: Removemos caracteres que burlam o SQL LIKE (%)
+    const protocoloLimpo = protocolo.trim().toUpperCase().replace(/[%_]/g, "");
+    
     if (protocoloLimpo.length < 5) {
         return res.status(400).json({ error: "O número do protocolo parece curto demais. Verifique se digitou corretamente." });
     }
 
     // 6. CONEXÃO COM O SUPABASE (Credenciais seguras via ENV)
-    const { SUPABASE_URL, SUPABASE_KEY } = process.env;
+    // Tenta pegar a chave padrão ou a service role (visto no print da Vercel)
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-        return res.status(500).json({ error: "Erro interno no servidor: Credenciais não encontradas." });
+        return res.status(500).json({ error: "Erro interno no servidor: Credenciais não encontradas no ambiente Vercel." });
     }
 
     // Normalização da URL: remove /rest/v1 se o usuário já tiver colocado na variável de ambiente

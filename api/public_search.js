@@ -118,27 +118,28 @@ export default async function handler(req, res) {
         const queryTermFinal = encodeURIComponent(parteFinal);
 
         // Busca radical: Termo original, versão numérica ou apenas os últimos 6 caracteres
-        const searchOR = `or=(protocolo.ilike.*${queryTerm}*,nome.ilike.*${queryTerm}*,protocolo.ilike.*${queryTermNumeric}*,nome.ilike.*${queryTermNumeric}*,protocolo.ilike.*${queryTermFinal}*,nome.ilike.*${queryTermFinal}*)`;
+        // CORREÇÃO: PostgREST (Supabase) utiliza '%' como curinga, não '*'
+        const searchOR = `or=(protocolo.ilike.%${queryTerm}%,nome.ilike.%${queryTerm}%,protocolo.ilike.%${queryTermNumeric}%,nome.ilike.%${queryTermNumeric}%,protocolo.ilike.%${queryTermFinal}%,nome.ilike.%${queryTermFinal}%)`;
 
         console.error(`[DIAGNOSTICO] Buscando: ${protocoloLimpo} | Termo Final: ${parteFinal} | URL: ${finalUrl}`);
 
         const [resSefrep, resSeape] = await Promise.all([
-            fetch(`${finalUrl}/sefrep_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders }),
-            fetch(`${finalUrl}/seape_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome`, { headers: defaultHeaders })
+            fetch(`${finalUrl}/sefrep_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome,escola`, { headers: defaultHeaders }),
+            fetch(`${finalUrl}/seape_registros?${searchOR}&select=id,protocolo,status,observacoes,data_entrada,tema,nome,escola`, { headers: defaultHeaders })
         ]);
 
         if (resSefrep.status === 429 || resSeape.status === 429) {
             return res.status(429).json({ error: "Limite de consultas atingido no Banco de Dados. Aguarde." });
         }
 
-        const dadosSefrep = await resSefrep.json();
-        const dadosSeape = await resSeape.json();
+        const dadosSefrep = resSefrep.ok ? await resSefrep.json() : [];
+        const dadosSeape = resSeape.ok ? await resSeape.json() : [];
 
-        console.error(`[RESULTADO] SEFREP: ${dadosSefrep?.length || 0} registros | SEAPE: ${dadosSeape?.length || 0} registros`);
+        console.error(`[RESULTADO] SEFREP: ${Array.isArray(dadosSefrep) ? dadosSefrep.length : 0} registros | SEAPE: ${Array.isArray(dadosSeape) ? dadosSeape.length : 0} registros`);
 
         let todosResultados = [
-            ...(dadosSefrep || []).map(p => ({ ...p, origem: 'SEFREP' })),
-            ...(dadosSeape || []).map(p => ({ ...p, origem: 'SEAPE' }))
+            ...(Array.isArray(dadosSefrep) ? dadosSefrep : []).map(p => ({ ...p, origem: 'SEFREP' })),
+            ...(Array.isArray(dadosSeape) ? dadosSeape : []).map(p => ({ ...p, origem: 'SEAPE' }))
         ];
 
         // Se nada foi encontrado, vamos logar os primeiros 1-2 itens da tabela SEFREP apenas para diagnosticar se a tabela existe e tem dados (LIMITADO A DEBUG)
@@ -161,7 +162,7 @@ export default async function handler(req, res) {
 
         let filaAtivaVTC = [];
         if (temVTCAtivo) {
-            const resFila = await fetch(`${finalUrl}/sefrep_registros?tema=ilike.*VTC*&or=(status.ilike.*lise*,status.ilike.*andamento*,status.ilike.*exig*)&select=id,data_entrada,created_at`, { headers: defaultHeaders });
+            const resFila = await fetch(`${finalUrl}/sefrep_registros?tema=ilike.%VTC%&or=(status.ilike.%lise%,status.ilike.%andamento%,status.ilike.%exig%)&select=id,data_entrada,created_at`, { headers: defaultHeaders });
             if (resFila.ok) {
                 filaAtivaVTC = await resFila.json();
                 filaAtivaVTC.sort((a, b) => {

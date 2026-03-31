@@ -199,9 +199,43 @@ header h1 {
     box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
 }
 
-/* Footer Premium */
+/* Footer Premium Enhanced */
 .footer-premium {
-    background-color: #1a1a1a !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: #121212 !important; /* Mais profundo */
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     letter-spacing: 0.5px;
+}
+
+.footer-premium a {
+    transition: all 0.3s ease;
+}
+
+.footer-premium a:hover {
+    color: var(--accent-gold) !important;
+    border-color: var(--accent-gold) !important;
+}
+
+.x-small {
+    font-size: 0.75rem !important;
+    letter-spacing: 0.5px;
+}
+
+/* Modal Customization */
+.modal-content {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.modal-header.bg-dark {
+    background-color: #1a1a1a !important;
+}
+
+.modal-body h6 {
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+}
+
+.modal-body p, .modal-body li {
+    font-size: 0.9rem;
+    color: #444;
 }

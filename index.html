@@ -79,11 +79,51 @@
         </div>
     </main>
 
-    <footer class="footer-premium text-white text-center py-3 mt-5 shadow-lg">
+    <footer class="footer-premium text-white text-center py-4 mt-5 shadow-lg">
         <div class="container">
-            <p class="mb-0 small fw-medium">&copy; 2026 Unidade Regional de Ensino de Suzano - URE Suzano</p>
+            <p class="mb-2 fw-medium">Dúvidas sobre o seu processo? Entre em contato com a sua <b>Unidade Escolar</b>.</p>
+            <p class="mb-3 small opacity-75">
+                <a href="#" class="text-white text-decoration-none border-bottom border-secondary pb-1" data-bs-toggle="modal" data-bs-target="#modalLGPD">
+                    <i class="bi bi-shield-check me-1"></i>Privacidade e Proteção de Dados (LGPD)
+                </a>
+            </p>
+            <p class="mb-0 x-small text-muted">&copy; 2026 Unidade Regional de Ensino de Suzano - URE Suzano</p>
         </div>
     </footer>
+
+    <!-- MODAL LGPD -->
+    <div class="modal fade" id="modalLGPD" tabindex="-1" aria-labelledby="modalLGPDLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-0">
+                    <h5 class="modal-title fw-bold" id="modalLGPDLabel"><i class="bi bi-shield-lock me-2"></i>Aviso de Privacidade e LGPD</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-dark text-start lh-base">
+                    <h6 class="fw-bold text-primary mb-3">1. Finalidade do Tratamento</h6>
+                    <p>A URE Suzano disponibiliza este portal para consulta de andamento de processos administrativos (VTC, Contagem, Aposentadorias). Os dados exibidos (Nome, Unidade Escolar, Status e Observações) são tratados com base no <b>Interesse Público</b> e <b>Cumprimento de Obrigação Legal</b> (Art. 7º, incisos II e III da Lei 13.709/2018).</p>
+
+                    <h6 class="fw-bold text-primary mt-4 mb-3">2. Segurança dos Dados</h6>
+                    <p>A consulta é restrita ao portador do número de protocolo exato. Implementamos medidas técnicas para impedir a coleta automatizada (bots) e o acesso não autorizado por terceiros.</p>
+
+                    <h6 class="fw-bold text-primary mt-4 mb-3">3. Seus Direitos (Direito do Titular)</h6>
+                    <p>Conforme a LGPD, você possui o direito de:</p>
+                    <ul class="mb-4">
+                        <li>Confirmar a existência do tratamento de seus dados.</li>
+                        <li>Solicitar a correção de dados incompletos, inexatos ou desatualizados.</li>
+                        <li>Manifestar-se contra a exibição pública de seu nome, solicitando a ocultação do mesmo da consulta pública.</li>
+                    </ul>
+
+                    <div class="alert alert-info border-0 shadow-sm">
+                        <i class="bi bi-info-circle-fill me-2"></i> Para exercer seus direitos ou tirar dúvidas, entre em contato com a secretaria da sua <b>Unidade Escolar</b> ou envie um e-mail para a <b>URE Suzano</b>.
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 p-3">
+                    <button type="button" class="btn btn-primary fw-bold px-4" data-bs-dismiss="modal">Entendi e concordo</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </body>
 

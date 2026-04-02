@@ -1,6 +1,6 @@
 // ============================================================
 // JS PORTAL URE SUZANO — LÓGICA DE CONSULTA & UX
-// Versão 11.0 Humanizada — Inteligência de Mensagens
+// Versão 11.1 Harmony & Clarity — Refino de Cores e Texto
 // ============================================================
 
 const API_PRODUCTION = "https://admin-ure-privado.vercel.app/api/public_search";
@@ -64,13 +64,13 @@ function gerarMensagemHumanizada(processo) {
     const dEntrada = formatarData(processo.data_entrada);
     const dSaida = formatarData(processo.data_saida);
     
-    // CASO 1: DEVOLVIDO / PENDÊNCIA
-    if (status.includes("DEVOLVIDO") || obs.includes("DEVOLVIDO") || obs.includes("CORREÇÃO") || obs.includes("PENDÊNCIA") || obs.includes("AJUSTE")) {
+    // CASO 1: DEVOLVIDO / PENDÊNCIA / CORREÇÃO
+    if (status.includes("DEVOLVIDO") || obs.includes("DEVOLVIDO") || obs.includes("CORREÇÃO") || obs.includes("PENDÊNCIA") || obs.includes("AJUSTE") || obs.includes("CORRECAO")) {
         return `Prezado(a) servidor(a), informamos que em <b>${dSaida || dEntrada}</b> o seu processo foi analisado e foi identificada a necessidade de <b>correção ou complementação de documentos funcionais</b> para prosseguimento. O processo foi devolvido para a sua <b>Unidade Escolar</b> para que as providências necessárias sejam tomadas. Para maiores informações e orientações detalhadas, por favor, entre em contato diretamente com a gerência de sua Unidade Escolar.`;
     }
     
     // CASO 2: FINALIZADO / CONCLUÍDO
-    if (status.includes("FINALIZADO") || status.includes("CONCLUÍDO") || obs.includes("CONCLUIDA") || obs.includes("CONCLUÍDO")) {
+    if (status.includes("FINALIZADO") || status.includes("CONCLUÍDO") || obs.includes("CONCLUIDA") || obs.includes("CONCLUÍDO") || obs.includes("CONCLUIDO")) {
         return `Prezado(a) servidor(a), temos a satisfação de informar que seu processo foi <b>concluído com sucesso</b> pela equipe técnica da URE Suzano em <b>${dSaida || dEntrada}</b>. O resultado oficial já foi devidamente encaminhado para a sua <b>Unidade Escolar</b> para os devidos registros e ciência. Parabenizamos pela conclusão deste ciclo administrativo!`;
     }
     
@@ -97,14 +97,29 @@ function renderizarResultados(resultados, container) {
         const isQuinquenio = tema.includes("QUINQUÊNIO") || tema.includes("QUINQUENIO");
         const isContagemTempo = tema.includes("CONTAGEM") && tema.includes("TEMPO");
         
-        let isRealmenteDevolvido = obsLower.includes("devolvido") || obsLower.includes("correção") || obsLower.includes("pendencia");
+        // --- LÓGICA DE STATUS REFINADA ---
+        let isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLower.includes("devolvido") || obsLower.includes("correção") || obsLower.includes("pendencia") || obsLower.includes("correcao");
         let isEmAndamento = stDisplay.includes("ANALISE") || stDisplay.includes("ANDAMENTO") || stDisplay.includes("ENTRADA") || obsLower.includes("analise") || obsLower.includes("andamento");
         let isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
 
-        // Borda fixa Azul Marinho (#003366) Evolution
-        let corBorda = "#003366";
-        let corBadge = isFinalizado ? "bg-success text-white" : (isEmAndamento ? "bg-warning text-dark" : "bg-primary text-white");
-        let iconeBadge = isFinalizado ? "bi-check-circle-fill" : (isEmAndamento ? "bi-shield-fill-exclamation" : "bi-hourglass-split");
+        // --- PALETA HARMONY (v11.1) ---
+        let corBorda = "#003366"; // Borda Marinho fixa
+        let EstiloBadge = "";
+        let iconeBadge = "";
+
+        if (isFinalizado) {
+            EstiloBadge = "background-color: #198754; color: white;"; // Verde Sucesso
+            iconeBadge = "bi-check-circle-fill";
+        } else if (isRealmenteDevolvido) {
+            EstiloBadge = "background-color: #D39E00; color: white;"; // Gold Escuro Alerta
+            iconeBadge = "bi-exclamation-triangle-fill";
+        } else if (isEmAndamento) {
+            EstiloBadge = "background-color: #003366; color: white;"; // Marinho Profundo Análise
+            iconeBadge = "bi-hourglass-split";
+        } else {
+            EstiloBadge = "background-color: #6C757D; color: white;";
+            iconeBadge = "bi-shield-fill";
+        }
 
         // Detector de DOE
         let exibicaoDOE = "";
@@ -115,7 +130,7 @@ function renderizarResultados(resultados, container) {
             }
         }
 
-        // Box de Fila Azul Harmony
+        // Box de Fila
         let filaHtml = "";
         if (isVTC && isEmAndamento && processo._posicaoFila) {
             const dPrev = new Date();
@@ -152,7 +167,7 @@ function renderizarResultados(resultados, container) {
 
                 <div class="card border-0 mb-4 shadow-sm w-100" style="border-radius: 12px; border-left: 8px solid ${corBorda} !important;">
                     <div class="card-body p-4 position-relative">
-                        <span class="badge ${corBadge} position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.75rem;">
+                        <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1); ${EstiloBadge}">
                             <i class="bi ${iconeBadge} me-1"></i> ${stDisplay}
                         </span>
                         
@@ -161,7 +176,7 @@ function renderizarResultados(resultados, container) {
                         <div class="d-flex align-items-center flex-wrap pt-1 mb-2 fw-bold" style="font-size: 0.8rem; color: #868e96;">
                             <span class="badge bg-light text-secondary border me-2" style="font-size: 0.65rem;">TEMA: ${tema}</span>
                             <span>PROT: <span class="text-primary">${protocoloVal}</span></span>
-                            ${dataEntrada ? `<span class="mx-2 text-muted fw-normal">|</span><span>ENTRADA: ${dataEntrada}</span>` : ""}
+                            ${dataEntrada ? `<span class="mx-2 text-muted fw-normal">|</span><span class="text-success fw-bold">ENTRADA: ${dataEntrada}</span>` : ""}
                             ${dataSaida ? `<span class="mx-2 text-muted fw-normal">|</span><span class="text-success fw-bold">SAÍDA: ${dataSaida}</span>` : ""}
                             ${exibicaoDOE}
                         </div>
@@ -178,13 +193,11 @@ function renderizarResultados(resultados, container) {
                         </div>
 
                         <div class="collapse mt-3" id="collapse_${processo.id}">
-                            <div class="p-3 rounded-3 border-start border-3 border-primary ${isEmAndamento ? 'bg-warning bg-opacity-10' : 'bg-light'} shadow-sm">
+                            <div class="p-4 rounded-3 border-start border-3 border-primary ${isEmAndamento ? 'bg-warning bg-opacity-10' : 'bg-light'} shadow-sm">
                                 <h6 class="fw-bold text-dark mb-2 small"><i class="bi bi-chat-left-dots-fill me-1 text-primary"></i> Comunicado ao Servidor:</h6>
-                                <p class="mb-0 text-dark" style="line-height: 1.6; font-size: 0.9rem;">
+                                <p class="mb-0 text-dark" style="line-height: 1.6; font-size: 0.95rem;">
                                     ${gerarMensagemHumanizada(processo)}
                                 </p>
-                                <hr class="my-2 opacity-10">
-                                <p class="small text-muted mb-0" style="font-size: 0.75rem;"><b>Nota Técnica:</b> ${(processo.observacoes || "Fila cronológica normal.").toUpperCase()}</p>
                             </div>
                         </div>
                     </div>

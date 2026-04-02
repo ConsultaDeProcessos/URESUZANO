@@ -1,6 +1,6 @@
 // ============================================================
 // JS PORTAL URE SUZANO — LÓGICA DE CONSULTA & UX
-// Versão 11.7 Queue Integration — Fila e Destaque
+// Versão 11.9 Red Alert — Fecho Simplificado e Borda Vermelha
 // ============================================================
 
 const API_PRODUCTION = "https://admin-ure-privado.vercel.app/api/public_search";
@@ -57,7 +57,7 @@ function formatarData(dataStr) {
     return dataStr.split('-').reverse().join('/');
 }
 
-// --- MOTOR DE HUMANIZAÇÃO (v11.7) ---
+// --- MOTOR DE HUMANIZAÇÃO (v11.9 - FECHO SIMPLIFICADO) ---
 function gerarMensagemHumanizada(processo) {
     const status = (processo.status || "").toUpperCase();
     const tema = (processo.tema || "").toUpperCase();
@@ -67,35 +67,35 @@ function gerarMensagemHumanizada(processo) {
     const context = (tema + " " + obs).toUpperCase();
     const posicao = processo._posicaoFila ? `${processo._posicaoFila}º lugar` : "ainda em processamento";
 
-    const FECHO_CONSULTIVO = "Caso necessite de esclarecimentos sobre o tempo apurado ou suporte técnico para o seu planejamento de aposentadoria, orientamos que procure diretamente a gerência de sua unidade escolar para o atendimento necessário.";
+    const FECHO_CONSULTIVO = "Caso necessite de esclarecimentos, orientamos que procure diretamente a gerência de sua unidade escolar para o atendimento necessário.";
     
     // SITUAÇÃO: NÃO FAZ JUS
     if (context.includes("NÃO FAZ JUS") || context.includes("REVISADO") || context.includes("INDEFERIDO") || status.includes("INDEFERIDO")) {
-        return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente analisado por esta **Unidade Regional de Ensino** em **${dSaida || dEntrada}**. Com base na legislação vigente, em especial aos critérios estabelecidos pela **Lei Complementar nº 1.354/2020** e pela **Emenda Constitucional nº 103/2019**, foi identificado que os requisitos necessários para a concessão do benefício pleiteado ainda não foram integralmente preenchidos nesta data. O seu **processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar**. ${FECHO_CONSULTIVO}`;
+        return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente analisado por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. Com base na legislação vigente, em especial aos critérios estabelecidos pela Lei Complementar nº 1.354/2020 e pela Emenda Constitucional nº 103/2019, foi identificado que os requisitos necessários para a concessão do benefício pleiteado ainda não foram integralmente preenchidos nesta data. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar. ${FECHO_CONSULTIVO}`;
     }
 
     // SITUAÇÃO: DEVOLVIDO / CORREÇÃO
     if (status.includes("DEVOLVIDO") || context.includes("DEVOLVIDO") || context.includes("CORREÇÃO") || context.includes("CORRECAO")) {
-        return `Prezado(a) servidor(a), informamos que em **${dSaida || dEntrada}** o seu processo foi analisado por esta **Unidade Regional de Ensino** e foi identificada a necessidade de **correção ou complementação de documentos funcionais** para prosseguimento. O processo retornou para a sua **Unidade Escolar** para que as providências necessárias sejam tomadas. Caso necessite de orientações detalhadas, por favor, procure a gerência de sua Unidade Escolar para o atendimento necessário.`;
+        return `Prezado(a) servidor(a), informamos que em ${dSaida || dEntrada} o seu processo foi analisado por esta Unidade Regional de Ensino e foi identificada a necessidade de correção ou complementação de documentos funcionais para prosseguimento. O processo retornou para a sua Unidade Escolar para que as providências necessárias sejam tomadas. Caso necessite de orientações detalhadas, por favor, procure a gerência de sua Unidade Escolar para o atendimento necessário.`;
     }
     
     // SITUAÇÃO: CONCLUÍDO / FINALIZADO
-    if (status.includes("FINALIZADO") || status.includes("CONCLUÍDO") || status.includes("CONCLUIDO") || context.includes("CONCLUIDO")) {
+    if (status.includes("FINALIZADO") || (status.includes("ANÁLISE") === false && (status.includes("CONCLUÍDO") || status.includes("CONCLUIDO") || context.includes("CONCLUIDO")))) {
         if (context.includes("ABONO")) {
-            return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente concluído por esta **Unidade Regional de Ensino** em **${dSaida || dEntrada}**. O seu **processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar** para ciência e registros fundamentais. Ressaltamos que, para fins de pagamento do seu Abono de Permanência, é necessário providenciar os **ANEXOS e CÓPIAS** de documentações pertinentes e encaminhá-los para este setor. Para o prosseguimento quanto à concessão de aposentadoria, por favor, realize a solicitação diretamente junto ao setor **SEAPE** em sua Unidade Escolar.`;
+            return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar para ciência e registros fundamentais. Ressaltamos que, para fins de pagamento do seu Abono de Permanência, é necessário providenciar os ANEXOS e CÓPIAS de documentações pertinentes e encaminhá-los para este setor. Para o prosseguimento quanto à concessão de aposentadoria, por favor, realize a solicitação diretamente junto ao setor SEAPE em sua Unidade Escolar.`;
         }
         if (context.includes("APOSENTADORIA") || context.includes("VTC")) {
-            return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente concluído por esta **Unidade Regional de Ensino** em **${dSaida || dEntrada}**. O seu **processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar** para ciência e registros. Orientamos que o(a) servidor(a) agora proceda com o trâmite necessário para solicitar a concessão de aposentadoria diretamente junto ao setor **SEAPE** em sua Unidade Escolar.`;
+            return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar para ciência e registros. Orientamos que o(a) servidor(a) agora proceda com o trâmite necessário para solicitar a concessão de aposentadoria diretamente junto ao setor SEAPE em sua Unidade Escolar.`;
         }
-        return `Prezado(a) servidor(a), informamos que o seu processo foi devidamente concluído por esta **Unidade Regional de Ensino** em **${dSaida || dEntrada}**. O seu **processo validado já retornou para a Unidade Escolar**. ${FECHO_CONSULTIVO}`;
+        return `Prezado(a) servidor(a), informamos que o seu processo foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo validado já retornou para a Unidade Escolar. ${FECHO_CONSULTIVO}`;
     }
     
-    // SITUAÇÃO NOVO TEXTO: EM ANÁLISE / AGUARDANDO ANÁLISE
+    // SITUAÇÃO: EM ANÁLISE / AGUARDANDO ANÁLISE
     if (status.includes("ANALISE") || status.includes("ANÁLISE") || status.includes("ANDAMENTO") || status.includes("ENTRADA")) {
-        return `Prezado(a) servidor(a), informamos que seu processo deu entrada nesta **Unidade Regional de Ensino** em **${dEntrada}** e encontra-se atualmente na **posição ${posicao}**, aguardando análise dos documentos pessoais e funcionais. Nossa equipe está processando as solicitações seguindo rigorosamente a ordem cronológica de chegada para garantir a isonomia no atendimento. Recomendamos o acompanhamento periódico por este canal oficial.`;
+        return `Prezado(a) servidor(a), informamos que seu processo deu entrada nesta Unidade Regional de Ensino em ${dEntrada} e encontra-se atualmente na posição ${posicao}, aguardando análise dos documentos pessoais e funcionais. Nossa equipe está processando as solicitações seguindo rigorosamente a ordem cronológica de chegada para garantir a isonomia no atendimento. Recomendamos o acompanhamento periódico por este canal oficial.`;
     }
 
-    return `Prezado(a) servidor(a), informamos que o seu processo encontra-se em trâmite técnico nesta **Unidade Regional de Ensino**. Por favor, acompanhe regularmente este portal para novas atualizações.`;
+    return `Prezado(a) servidor(a), informamos que o seu processo encontra-se em trâmite técnico nesta Unidade Regional de Ensino. Por favor, acompanhe regularmente este portal para novas atualizações.`;
 }
 
 function renderizarResultados(resultados, container) {
@@ -107,7 +107,6 @@ function renderizarResultados(resultados, container) {
         const protocoloVal = processo.protocolo || "---";
         const stDisplay = (processo.status || "EM ANÁLISE").toUpperCase();
         const obsLimpa = (processo.observacoes || "").toUpperCase();
-        const obsLower = obsLimpa.toLowerCase();
         
         const dataEntrada = formatarData(processo.data_entrada);
         const dataSaida = formatarData(processo.data_saida);
@@ -115,9 +114,9 @@ function renderizarResultados(resultados, container) {
 
         const isEmAndamento = stDisplay.includes("ANÁLISE") || stDisplay.includes("ANALISE") || stDisplay.includes("ANDAMENTO") || stDisplay.includes("ENTRADA");
         const isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
-        const isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLower.includes("devolvido") || obsLower.includes("correção") || obsLower.includes("pendencia") || obsLower.includes("correcao");
+        const isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLimpa.includes("DEVOLVIDO") || obsLimpa.includes("CORREÇÃO") || obsLimpa.includes("PENDENCIA") || obsLimpa.includes("CORRECAO");
 
-        // --- PALETA QUEUE INTEGRATION (v11.7) ---
+        // --- PALETA RED ALERT (v11.9) ---
         let corBorda = "#003366"; 
         let EstiloBadge = "";
         let iconeBadge = "";
@@ -129,7 +128,6 @@ function renderizarResultados(resultados, container) {
             EstiloBadge = "background-color: white; color: #D39E00; border: 1.5px solid #D39E00; font-weight: bold;"; 
             iconeBadge = "bi-exclamation-triangle-fill";
         } else if (isEmAndamento) {
-            // CORRIGIDO: Agora detecta "ANÁLISE" com acento e fica Azul Marinho
             EstiloBadge = "background-color: white; color: #003366; border: 1.5px solid #003366; font-weight: bold;"; 
             iconeBadge = "bi-hourglass-split";
         } else {
@@ -140,8 +138,9 @@ function renderizarResultados(resultados, container) {
         // --- BOX DE FILA ---
         let filaHtml = "";
         if (isEmAndamento && processo._posicaoFila) {
+            const diasFila = Math.min(120, 30 + (processo._posicaoFila * 7));
             const dPrev = new Date();
-            dPrev.setDate(dPrev.getDate() + (processo._diasEstimados || 60));
+            dPrev.setDate(dPrev.getDate() + diasFila);
             const dataEstimada = dPrev.toLocaleDateString('pt-BR');
 
             filaHtml = `
@@ -156,7 +155,7 @@ function renderizarResultados(resultados, container) {
                     </div>
                 </div>
                 <div class="text-end border-start ps-3 border-primary border-opacity-25">
-                    <span class="d-block small text-muted text-uppercase fw-bold" style="font-size:0.6rem;">Previsão de Análise</span>
+                    <span class="d-block small text-muted text-uppercase fw-bold" style="font-size:0.6rem;">Previsão Estimada</span>
                     <span class="fs-5 fw-bold text-primary text-nowrap"><i class="bi bi-calendar-check me-1"></i>${dataEstimada}</span>
                 </div>
             </div>`;
@@ -166,7 +165,7 @@ function renderizarResultados(resultados, container) {
             <div class="col-12 animate__animated animate__zoomIn">
                 <div class="card mb-4 shadow" style="border-radius: 12px; border-left: 8px solid ${corBorda} !important; border: 1px solid #dee2e6; background: white;">
                     <div class="card-body p-4 position-relative">
-                        <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3" style="font-size: 0.72rem; ${EstiloBadge}">
+                        <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.72rem; ${EstiloBadge}">
                             <i class="bi ${iconeBadge} me-1"></i> ${stDisplay}
                         </span>
                         
@@ -192,7 +191,7 @@ function renderizarResultados(resultados, container) {
                         </div>
 
                         <div class="collapse mt-3" id="collapse_${processo.id}">
-                            <div class="p-4 rounded-3 border-start border-3 border-primary bg-light shadow-sm" style="border: 1px solid #e9ecef; border-left: 4px solid #003366 !important;">
+                            <div class="p-4 rounded-3 border-start border-3 border-danger bg-light shadow-sm" style="border: 1px solid #e9ecef; border-left: 6px solid #dc3545 !important;">
                                 <p class="mb-0 text-dark" style="line-height: 1.6; font-size: 0.95rem;">
                                     ${gerarMensagemHumanizada(processo)}
                                 </p>

@@ -1,6 +1,6 @@
 // ============================================================
 // JS PORTAL URE SUZANO — LÓGICA DE CONSULTA & UX
-// Versão 11.9 Red Alert — Fecho Simplificado e Borda Vermelha
+// Versão 11.9.1 — Correção de Exibição da Data de Saída
 // ============================================================
 
 const API_PRODUCTION = "https://admin-ure-privado.vercel.app/api/public_search";
@@ -57,7 +57,7 @@ function formatarData(dataStr) {
     return dataStr.split('-').reverse().join('/');
 }
 
-// --- MOTOR DE HUMANIZAÇÃO (v11.9 - FECHO SIMPLIFICADO) ---
+// --- MOTOR DE HUMANIZAÇÃO ---
 function gerarMensagemHumanizada(processo) {
     const status = (processo.status || "").toUpperCase();
     const tema = (processo.tema || "").toUpperCase();
@@ -69,17 +69,14 @@ function gerarMensagemHumanizada(processo) {
 
     const FECHO_CONSULTIVO = "Caso necessite de esclarecimentos, orientamos que procure diretamente a gerência de sua unidade escolar para o atendimento necessário.";
     
-    // SITUAÇÃO: NÃO FAZ JUS
     if (context.includes("NÃO FAZ JUS") || context.includes("REVISADO") || context.includes("INDEFERIDO") || status.includes("INDEFERIDO")) {
         return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente analisado por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. Com base na legislação vigente, em especial aos critérios estabelecidos pela Lei Complementar nº 1.354/2020 e pela Emenda Constitucional nº 103/2019, foi identificado que os requisitos necessários para a concessão do benefício pleiteado ainda não foram integralmente preenchidos nesta data. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar. ${FECHO_CONSULTIVO}`;
     }
 
-    // SITUAÇÃO: DEVOLVIDO / CORREÇÃO
     if (status.includes("DEVOLVIDO") || context.includes("DEVOLVIDO") || context.includes("CORREÇÃO") || context.includes("CORRECAO")) {
         return `Prezado(a) servidor(a), informamos que em ${dSaida || dEntrada} o seu processo foi analisado por esta Unidade Regional de Ensino e foi identificada a necessidade de correção ou complementação de documentos funcionais para prosseguimento. O processo retornou para a sua Unidade Escolar para que as providências necessárias sejam tomadas. Caso necessite de orientações detalhadas, por favor, procure a gerência de sua Unidade Escolar para o atendimento necessário.`;
     }
     
-    // SITUAÇÃO: CONCLUÍDO / FINALIZADO
     if (status.includes("FINALIZADO") || (status.includes("ANÁLISE") === false && (status.includes("CONCLUÍDO") || status.includes("CONCLUIDO") || context.includes("CONCLUIDO")))) {
         if (context.includes("ABONO")) {
             return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar para ciência e registros fundamentais. Ressaltamos que, para fins de pagamento do seu Abono de Permanência, é necessário providenciar os ANEXOS e CÓPIAS de documentações pertinentes e encaminhá-los para este setor. Para o prosseguimento quanto à concessão de aposentadoria, por favor, realize a solicitação diretamente junto ao setor SEAPE em sua Unidade Escolar.`;
@@ -90,7 +87,6 @@ function gerarMensagemHumanizada(processo) {
         return `Prezado(a) servidor(a), informamos que o seu processo foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo validado já retornou para a Unidade Escolar. ${FECHO_CONSULTIVO}`;
     }
     
-    // SITUAÇÃO: EM ANÁLISE / AGUARDANDO ANÁLISE
     if (status.includes("ANALISE") || status.includes("ANÁLISE") || status.includes("ANDAMENTO") || status.includes("ENTRADA")) {
         return `Prezado(a) servidor(a), informamos que seu processo deu entrada nesta Unidade Regional de Ensino em ${dEntrada} e encontra-se atualmente na posição ${posicao}, aguardando análise dos documentos pessoais e funcionais. Nossa equipe está processando as solicitações seguindo rigorosamente a ordem cronológica de chegada para garantir a isonomia no atendimento. Recomendamos o acompanhamento periódico por este canal oficial.`;
     }
@@ -116,7 +112,6 @@ function renderizarResultados(resultados, container) {
         const isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
         const isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLimpa.includes("DEVOLVIDO") || obsLimpa.includes("CORREÇÃO") || obsLimpa.includes("PENDENCIA") || obsLimpa.includes("CORRECAO");
 
-        // --- PALETA RED ALERT (v11.9) ---
         let corBorda = "#003366"; 
         let EstiloBadge = "";
         let iconeBadge = "";
@@ -135,7 +130,6 @@ function renderizarResultados(resultados, container) {
             iconeBadge = "bi-shield-fill";
         }
 
-        // --- BOX DE FILA ---
         let filaHtml = "";
         if (isEmAndamento && processo._posicaoFila) {
             const diasFila = Math.min(120, 30 + (processo._posicaoFila * 7));
@@ -174,9 +168,16 @@ function renderizarResultados(resultados, container) {
                         <div class="d-flex align-items-center flex-wrap pt-1 mb-2 fw-bold" style="font-size: 0.8rem; color: #868e96;">
                             <span class="badge bg-light text-secondary border me-2" style="font-size: 0.65rem; border-color: #dee2e6 !important;">TEMA: ${tema}</span>
                             <span>PROT: <span class="text-primary">${protocoloVal}</span></span>
+                            
                             <span class="mx-2 text-muted fw-normal">|</span>
                             <span style="color: #868e96; font-weight: bold;">ENTRADA:</span> 
                             <span class="text-primary fw-bold ms-1">${dataEntrada}</span>
+
+                            ${dataSaida ? `
+                                <span class="mx-2 text-muted fw-normal">|</span>
+                                <span style="color: #868e96; font-weight: bold;">SAÍDA:</span> 
+                                <span class="text-primary fw-bold ms-1">${dataSaida}</span>
+                            ` : ""}
                         </div>
 
                         ${filaHtml}

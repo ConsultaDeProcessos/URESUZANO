@@ -1,6 +1,6 @@
 // ============================================================
 // JS PORTAL URE SUZANO — LÓGICA DE CONSULTA & UX
-// Versão 11.1 Harmony & Clarity — Refino de Cores e Texto
+// Versão 11.2 Premium Harmony — Refino Cromático e Badge
 // ============================================================
 
 const API_PRODUCTION = "https://admin-ure-privado.vercel.app/api/public_search";
@@ -64,17 +64,14 @@ function gerarMensagemHumanizada(processo) {
     const dEntrada = formatarData(processo.data_entrada);
     const dSaida = formatarData(processo.data_saida);
     
-    // CASO 1: DEVOLVIDO / PENDÊNCIA / CORREÇÃO
     if (status.includes("DEVOLVIDO") || obs.includes("DEVOLVIDO") || obs.includes("CORREÇÃO") || obs.includes("PENDÊNCIA") || obs.includes("AJUSTE") || obs.includes("CORRECAO")) {
         return `Prezado(a) servidor(a), informamos que em <b>${dSaida || dEntrada}</b> o seu processo foi analisado e foi identificada a necessidade de <b>correção ou complementação de documentos funcionais</b> para prosseguimento. O processo foi devolvido para a sua <b>Unidade Escolar</b> para que as providências necessárias sejam tomadas. Para maiores informações e orientações detalhadas, por favor, entre em contato diretamente com a gerência de sua Unidade Escolar.`;
     }
     
-    // CASO 2: FINALIZADO / CONCLUÍDO
     if (status.includes("FINALIZADO") || status.includes("CONCLUÍDO") || obs.includes("CONCLUIDA") || obs.includes("CONCLUÍDO") || obs.includes("CONCLUIDO")) {
         return `Prezado(a) servidor(a), temos a satisfação de informar que seu processo foi <b>concluído com sucesso</b> pela equipe técnica da URE Suzano em <b>${dSaida || dEntrada}</b>. O resultado oficial já foi devidamente encaminhado para a sua <b>Unidade Escolar</b> para os devidos registros e ciência. Parabenizamos pela conclusão deste ciclo administrativo!`;
     }
     
-    // CASO 3: EM ANÁLISE / ANDAMENTO
     return `Prezado(a) servidor(a), seu processo deu entrada nesta Regional em <b>${dEntrada}</b> e encontra-se atualmente em nossa <b>fila de análise técnica</b>. Fique tranquilo(a), nossa equipe está trabalhando com cuidado para processar sua solicitação seguindo rigorosamente a ordem cronológica de chegada. Continue acompanhando por este canal para novas atualizações automáticas.`;
 }
 
@@ -94,16 +91,12 @@ function renderizarResultados(resultados, container) {
         const exibicaoEscola = (processo.escola || "URE SUZANO").toUpperCase();
 
         const isVTC = tema.includes("VTC");
-        const isQuinquenio = tema.includes("QUINQUÊNIO") || tema.includes("QUINQUENIO");
-        const isContagemTempo = tema.includes("CONTAGEM") && tema.includes("TEMPO");
-        
-        // --- LÓGICA DE STATUS REFINADA ---
-        let isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLower.includes("devolvido") || obsLower.includes("correção") || obsLower.includes("pendencia") || obsLower.includes("correcao");
-        let isEmAndamento = stDisplay.includes("ANALISE") || stDisplay.includes("ANDAMENTO") || stDisplay.includes("ENTRADA") || obsLower.includes("analise") || obsLower.includes("andamento");
-        let isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
+        const isEmAndamento = stDisplay.includes("ANALISE") || stDisplay.includes("ANDAMENTO") || stDisplay.includes("ENTRADA") || obsLower.includes("analise") || obsLower.includes("andamento");
+        const isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
+        const isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLower.includes("devolvido") || obsLower.includes("correção") || obsLower.includes("pendencia") || obsLower.includes("correcao");
 
-        // --- PALETA HARMONY (v11.1) ---
-        let corBorda = "#003366"; // Borda Marinho fixa
+        // --- PALETA HARMONY (v11.2) ---
+        let corBorda = "#003366";
         let EstiloBadge = "";
         let iconeBadge = "";
 
@@ -111,10 +104,11 @@ function renderizarResultados(resultados, container) {
             EstiloBadge = "background-color: #198754; color: white;"; // Verde Sucesso
             iconeBadge = "bi-check-circle-fill";
         } else if (isRealmenteDevolvido) {
-            EstiloBadge = "background-color: #D39E00; color: white;"; // Gold Escuro Alerta
+            // INVERSÃO CROMÁTICA: Fundo Branco, Texto Ouro Escuro solicitado
+            EstiloBadge = "background-color: white; color: #D39E00; border: 1.5px solid #D39E00; font-weight: bold;"; 
             iconeBadge = "bi-exclamation-triangle-fill";
         } else if (isEmAndamento) {
-            EstiloBadge = "background-color: #003366; color: white;"; // Marinho Profundo Análise
+            EstiloBadge = "background-color: #003366; color: white;"; // Marinho Profundo
             iconeBadge = "bi-hourglass-split";
         } else {
             EstiloBadge = "background-color: #6C757D; color: white;";
@@ -157,17 +151,9 @@ function renderizarResultados(resultados, container) {
 
         const card = `
             <div class="col-12 animate__animated animate__zoomIn">
-                ${isQuinquenio || isContagemTempo ? `
-                <div class="alert border-0 shadow-sm mb-3 text-start alert-info" style="border-radius: 12px; border-left: 5px solid #003366 !important;">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-info-circle-fill me-2 fs-5 text-primary"></i>
-                        <div class="small mt-1 text-dark"><b>Aviso Legal:</b> Alta demanda para Contagem/Quinquênio (LC 173/2020).</div>
-                    </div>
-                </div>` : ""}
-
                 <div class="card border-0 mb-4 shadow-sm w-100" style="border-radius: 12px; border-left: 8px solid ${corBorda} !important;">
                     <div class="card-body p-4 position-relative">
-                        <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.1); ${EstiloBadge}">
+                        <span class="badge position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.72rem; ${EstiloBadge}">
                             <i class="bi ${iconeBadge} me-1"></i> ${stDisplay}
                         </span>
                         
@@ -176,8 +162,19 @@ function renderizarResultados(resultados, container) {
                         <div class="d-flex align-items-center flex-wrap pt-1 mb-2 fw-bold" style="font-size: 0.8rem; color: #868e96;">
                             <span class="badge bg-light text-secondary border me-2" style="font-size: 0.65rem;">TEMA: ${tema}</span>
                             <span>PROT: <span class="text-primary">${protocoloVal}</span></span>
-                            ${dataEntrada ? `<span class="mx-2 text-muted fw-normal">|</span><span class="text-success fw-bold">ENTRADA: ${dataEntrada}</span>` : ""}
-                            ${dataSaida ? `<span class="mx-2 text-muted fw-normal">|</span><span class="text-success fw-bold">SAÍDA: ${dataSaida}</span>` : ""}
+                            
+                            ${dataEntrada ? `
+                                <span class="mx-2 text-muted fw-normal">|</span>
+                                <span style="color: #868e96; font-weight: bold;">ENTRADA:</span> 
+                                <span class="text-primary fw-bold ms-1">${dataEntrada}</span>
+                            ` : ""}
+                            
+                            ${dataSaida ? `
+                                <span class="mx-2 text-muted fw-normal">|</span>
+                                <span style="color: #868e96; font-weight: bold;">SAÍDA:</span> 
+                                <span class="text-primary fw-bold ms-1">${dataSaida}</span>
+                            ` : ""}
+                            
                             ${exibicaoDOE}
                         </div>
                         

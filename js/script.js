@@ -1,6 +1,6 @@
 // ============================================================
 // JS PORTAL URE SUZANO — LÓGICA DE CONSULTA & UX
-// Versão 11.9.1 — Correção de Exibição da Data de Saída
+// Versão 11.9.2 — Bordas Adaptativas e Dinâmica de Fila
 // ============================================================
 
 const API_PRODUCTION = "https://admin-ure-privado.vercel.app/api/public_search";
@@ -69,14 +69,17 @@ function gerarMensagemHumanizada(processo) {
 
     const FECHO_CONSULTIVO = "Caso necessite de esclarecimentos, orientamos que procure diretamente a gerência de sua unidade escolar para o atendimento necessário.";
     
+    // SITUAÇÃO: NÃO FAZ JUS
     if (context.includes("NÃO FAZ JUS") || context.includes("REVISADO") || context.includes("INDEFERIDO") || status.includes("INDEFERIDO")) {
         return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente analisado por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. Com base na legislação vigente, em especial aos critérios estabelecidos pela Lei Complementar nº 1.354/2020 e pela Emenda Constitucional nº 103/2019, foi identificado que os requisitos necessários para a concessão do benefício pleiteado ainda não foram integralmente preenchidos nesta data. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar. ${FECHO_CONSULTIVO}`;
     }
 
+    // SITUAÇÃO: DEVOLVIDO
     if (status.includes("DEVOLVIDO") || context.includes("DEVOLVIDO") || context.includes("CORREÇÃO") || context.includes("CORRECAO")) {
         return `Prezado(a) servidor(a), informamos que em ${dSaida || dEntrada} o seu processo foi analisado por esta Unidade Regional de Ensino e foi identificada a necessidade de correção ou complementação de documentos funcionais para prosseguimento. O processo retornou para a sua Unidade Escolar para que as providências necessárias sejam tomadas. Caso necessite de orientações detalhadas, por favor, procure a gerência de sua Unidade Escolar para o atendimento necessário.`;
     }
     
+    // SITUAÇÃO: CONCLUÍDO
     if (status.includes("FINALIZADO") || (status.includes("ANÁLISE") === false && (status.includes("CONCLUÍDO") || status.includes("CONCLUIDO") || context.includes("CONCLUIDO")))) {
         if (context.includes("ABONO")) {
             return `Prezado(a) servidor(a), informamos que o seu processo de VTC foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo, com a devida validação do Tempo de Contribuição, já retornou para a Unidade Escolar para ciência e registros fundamentais. Ressaltamos que, para fins de pagamento do seu Abono de Permanência, é necessário providenciar os ANEXOS e CÓPIAS de documentações pertinentes e encaminhá-los para este setor. Para o prosseguimento quanto à concessão de aposentadoria, por favor, realize a solicitação diretamente junto ao setor SEAPE em sua Unidade Escolar.`;
@@ -87,6 +90,7 @@ function gerarMensagemHumanizada(processo) {
         return `Prezado(a) servidor(a), informamos que o seu processo foi devidamente concluído por esta Unidade Regional de Ensino em ${dSaida || dEntrada}. O seu processo validado já retornou para a Unidade Escolar. ${FECHO_CONSULTIVO}`;
     }
     
+    // SITUAÇÃO: EM ANÁLISE
     if (status.includes("ANALISE") || status.includes("ANÁLISE") || status.includes("ANDAMENTO") || status.includes("ENTRADA")) {
         return `Prezado(a) servidor(a), informamos que seu processo deu entrada nesta Unidade Regional de Ensino em ${dEntrada} e encontra-se atualmente na posição ${posicao}, aguardando análise dos documentos pessoais e funcionais. Nossa equipe está processando as solicitações seguindo rigorosamente a ordem cronológica de chegada para garantir a isonomia no atendimento. Recomendamos o acompanhamento periódico por este canal oficial.`;
     }
@@ -110,8 +114,10 @@ function renderizarResultados(resultados, container) {
 
         const isEmAndamento = stDisplay.includes("ANÁLISE") || stDisplay.includes("ANALISE") || stDisplay.includes("ANDAMENTO") || stDisplay.includes("ENTRADA");
         const isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
-        const isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLimpa.includes("DEVOLVIDO") || obsLimpa.includes("CORREÇÃO") || obsLimpa.includes("PENDENCIA") || obsLimpa.includes("CORRECAO");
+        const isNaoFazJus = obsLimpa.includes("NÃO FAZ JUS") || obsLimpa.includes("NAO FAZ JUS") || obsLimpa.includes("INDEFERIDO");
+        const isRealmenteDevolvido = stDisplay.includes("DEVOLVIDO") || obsLimpa.includes("DEVOLVIDO");
 
+        // --- PALETA ADAPTIVE (v11.9.2) ---
         let corBorda = "#003366"; 
         let EstiloBadge = "";
         let iconeBadge = "";
@@ -119,7 +125,7 @@ function renderizarResultados(resultados, container) {
         if (isFinalizado) {
             EstiloBadge = "background-color: white; color: #198754; border: 1.5px solid #198754; font-weight: bold;";
             iconeBadge = "bi-check-circle-fill";
-        } else if (isRealmenteDevolvido) {
+        } else if (isRealmenteDevolvido || isNaoFazJus) {
             EstiloBadge = "background-color: white; color: #D39E00; border: 1.5px solid #D39E00; font-weight: bold;"; 
             iconeBadge = "bi-exclamation-triangle-fill";
         } else if (isEmAndamento) {
@@ -130,15 +136,19 @@ function renderizarResultados(resultados, container) {
             iconeBadge = "bi-shield-fill";
         }
 
+        // Lógica de Cor da Borda do Comunicado: Apenas Vermelho em Devolução ou Não Faz Jus
+        const corBordaComunicado = (isRealmenteDevolvido || isNaoFazJus) ? "#dc3545" : "#003366";
+
         let filaHtml = "";
         if (isEmAndamento && processo._posicaoFila) {
-            const diasFila = Math.min(120, 30 + (processo._posicaoFila * 7));
+            // DINAMISMO INTELIGENTE: 30 base + (pos * 5), teto 120
+            const diasFila = Math.min(120, 30 + (processo._posicaoFila * 5));
             const dPrev = new Date();
             dPrev.setDate(dPrev.getDate() + diasFila);
             const dataEstimada = dPrev.toLocaleDateString('pt-BR');
 
             filaHtml = `
-            <div class="mt-3 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 d-flex align-items-center justify-content-between shadow-sm animate__animated animate__fadeIn">
+            <div class="mt-3 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 d-flex align-items-center justify-content-between shadow-sm">
                 <div class="d-flex align-items-center">
                     <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
                         <i class="bi bi-people-fill fs-5"></i>
@@ -168,11 +178,9 @@ function renderizarResultados(resultados, container) {
                         <div class="d-flex align-items-center flex-wrap pt-1 mb-2 fw-bold" style="font-size: 0.8rem; color: #868e96;">
                             <span class="badge bg-light text-secondary border me-2" style="font-size: 0.65rem; border-color: #dee2e6 !important;">TEMA: ${tema}</span>
                             <span>PROT: <span class="text-primary">${protocoloVal}</span></span>
-                            
                             <span class="mx-2 text-muted fw-normal">|</span>
                             <span style="color: #868e96; font-weight: bold;">ENTRADA:</span> 
                             <span class="text-primary fw-bold ms-1">${dataEntrada}</span>
-
                             ${dataSaida ? `
                                 <span class="mx-2 text-muted fw-normal">|</span>
                                 <span style="color: #868e96; font-weight: bold;">SAÍDA:</span> 
@@ -192,7 +200,7 @@ function renderizarResultados(resultados, container) {
                         </div>
 
                         <div class="collapse mt-3" id="collapse_${processo.id}">
-                            <div class="p-4 rounded-3 border-start border-3 border-danger bg-light shadow-sm" style="border: 1px solid #e9ecef; border-left: 6px solid #dc3545 !important;">
+                            <div class="p-4 rounded-3 border-start border-3 bg-light shadow-sm" style="border: 1px solid #e9ecef; border-left: 6px solid ${corBordaComunicado} !important;">
                                 <p class="mb-0 text-dark" style="line-height: 1.6; font-size: 0.95rem;">
                                     ${gerarMensagemHumanizada(processo)}
                                 </p>

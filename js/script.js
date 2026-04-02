@@ -1,6 +1,6 @@
 // ============================================================
 // JS PORTAL URE SUZANO — LÓGICA DE CONSULTA & UX
-// Versão 10.0 Evolution Platinum — Azul & Gold Harmony
+// Versão 11.0 Humanizada — Inteligência de Mensagens
 // ============================================================
 
 const API_PRODUCTION = "https://admin-ure-privado.vercel.app/api/public_search";
@@ -21,7 +21,7 @@ async function consultarProcesso() {
         return;
     }
 
-    pResultado.innerHTML = `<div class="text-center py-4"><span class="spinner-border text-primary"></span><p class="mt-2 text-muted">Buscando na base URE Suzano...</p></div>`;
+    pResultado.innerHTML = `<div class="text-center py-4"><span class="spinner-border text-primary"></span><p class="mt-2 text-muted">Acessando base URE Suzano...</p></div>`;
 
     try {
         const response = await fetch(`${API_PRODUCTION}?protocolo=${encodeURIComponent(pNumero)}`, {
@@ -37,7 +37,7 @@ async function consultarProcesso() {
         }
 
         if (!data.resultados || data.resultados.length === 0) {
-            pResultado.innerHTML = `<div class="alert alert-info border-0 p-4 text-center shadow-sm" style="border-radius: 12px; border-left: 8px solid #003366 !important;">
+            pResultado.innerHTML = `<div class="alert alert-info border-0 p-4 text-center shadow-sm w-100" style="border-radius: 12px; border-left: 8px solid #003366 !important; background: white;">
                 <i class="bi bi-search fs-1 d-block mb-3 text-muted"></i>
                 <h5 class="fw-bold">Nenhum processo encontrado</h5>
                 <p class="small mb-0">Verifique se digitou o protocolo corretamente (Ex: S12345).<br>Lembramos que a busca deve ser <b>EXATA</b> para sua segurança.</p>
@@ -52,17 +52,45 @@ async function consultarProcesso() {
     }
 }
 
+function formatarData(dataStr) {
+    if (!dataStr) return "";
+    return dataStr.split('-').reverse().join('/');
+}
+
+// --- MOTOR DE HUMANIZAÇÃO DIGITAL ---
+function gerarMensagemHumanizada(processo) {
+    const status = (processo.status || "").toUpperCase();
+    const obs = (processo.observacoes || "").toUpperCase();
+    const dEntrada = formatarData(processo.data_entrada);
+    const dSaida = formatarData(processo.data_saida);
+    
+    // CASO 1: DEVOLVIDO / PENDÊNCIA
+    if (status.includes("DEVOLVIDO") || obs.includes("DEVOLVIDO") || obs.includes("CORREÇÃO") || obs.includes("PENDÊNCIA") || obs.includes("AJUSTE")) {
+        return `Prezado(a) servidor(a), informamos que em <b>${dSaida || dEntrada}</b> o seu processo foi analisado e foi identificada a necessidade de <b>correção ou complementação de documentos funcionais</b> para prosseguimento. O processo foi devolvido para a sua <b>Unidade Escolar</b> para que as providências necessárias sejam tomadas. Para maiores informações e orientações detalhadas, por favor, entre em contato diretamente com a gerência de sua Unidade Escolar.`;
+    }
+    
+    // CASO 2: FINALIZADO / CONCLUÍDO
+    if (status.includes("FINALIZADO") || status.includes("CONCLUÍDO") || obs.includes("CONCLUIDA") || obs.includes("CONCLUÍDO")) {
+        return `Prezado(a) servidor(a), temos a satisfação de informar que seu processo foi <b>concluído com sucesso</b> pela equipe técnica da URE Suzano em <b>${dSaida || dEntrada}</b>. O resultado oficial já foi devidamente encaminhado para a sua <b>Unidade Escolar</b> para os devidos registros e ciência. Parabenizamos pela conclusão deste ciclo administrativo!`;
+    }
+    
+    // CASO 3: EM ANÁLISE / ANDAMENTO
+    return `Prezado(a) servidor(a), seu processo deu entrada nesta Regional em <b>${dEntrada}</b> e encontra-se atualmente em nossa <b>fila de análise técnica</b>. Fique tranquilo(a), nossa equipe está trabalhando com cuidado para processar sua solicitação seguindo rigorosamente a ordem cronológica de chegada. Continue acompanhando por este canal para novas atualizações automáticas.`;
+}
+
 function renderizarResultados(resultados, container) {
     container.innerHTML = "";
     
     resultados.forEach(processo => {
         const interessado = (processo.nome || "INTERESSADO NÃO INFORMADO").toUpperCase();
         const tema = (processo.tema || "NÃO INFORMADO").toUpperCase();
-        const protocoloValue = processo.protocolo || "---";
+        const protocoloVal = processo.protocolo || "---";
         const stDisplay = (processo.status || "EM ANÁLISE").toUpperCase();
         const obsLimpa = (processo.observacoes || "").toUpperCase();
         const obsLower = obsLimpa.toLowerCase();
-        const dataEntrada = processo.data_entrada ? processo.data_entrada.split('-').reverse().join('/') : "";
+        
+        const dataEntrada = formatarData(processo.data_entrada);
+        const dataSaida = formatarData(processo.data_saida);
         const exibicaoEscola = (processo.escola || "URE SUZANO").toUpperCase();
 
         const isVTC = tema.includes("VTC");
@@ -73,26 +101,26 @@ function renderizarResultados(resultados, container) {
         let isEmAndamento = stDisplay.includes("ANALISE") || stDisplay.includes("ANDAMENTO") || stDisplay.includes("ENTRADA") || obsLower.includes("analise") || obsLower.includes("andamento");
         let isFinalizado = stDisplay.includes("FINALIZADO") || stDisplay.includes("CONCLUÍDO") || stDisplay.includes("CONCLUIDO");
 
-        // --- COLORS EVOLUTION V10.0 ---
-        let corBorda = "#003366"; // Azul Marinho solicitado
+        // Borda fixa Azul Marinho (#003366) Evolution
+        let corBorda = "#003366";
         let corBadge = isFinalizado ? "bg-success text-white" : (isEmAndamento ? "bg-warning text-dark" : "bg-primary text-white");
         let iconeBadge = isFinalizado ? "bi-check-circle-fill" : (isEmAndamento ? "bi-shield-fill-exclamation" : "bi-hourglass-split");
 
-        // Detector de DOE (Aposentadoria)
-        let exibicaoDataDOE = "";
+        // Detector de DOE
+        let exibicaoDOE = "";
         if (tema.includes("APOSENTADORIA")) {
             const match = obsLimpa.match(/(?:DOE)[\s\-,:]*([\d]{2}\/[\d]{2}\/[\d]{4})/);
             if (match && match[1]) {
-                exibicaoDataDOE = `<span class="mx-2 text-muted fw-normal">|</span><span class="text-secondary small fw-bold"><i class="bi bi-newspaper me-1"></i> DOE: ${match[1]}</span>`;
+                exibicaoDOE = `<span class="mx-2 text-muted fw-normal">|</span><span class="text-secondary small fw-bold"><i class="bi bi-newspaper me-1"></i> DOE: ${match[1]}</span>`;
             }
         }
 
-        // --- BOX DE FILA (TEMA AZUL HARMONY) ---
+        // Box de Fila Azul Harmony
         let filaHtml = "";
         if (isVTC && isEmAndamento && processo._posicaoFila) {
             const dPrev = new Date();
             dPrev.setDate(dPrev.getDate() + (processo._diasEstimados || 60));
-            const dataFmt = dPrev.toLocaleDateString('pt-BR');
+            const dataEstimada = dPrev.toLocaleDateString('pt-BR');
 
             filaHtml = `
             <div class="mt-3 p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 d-flex align-items-center justify-content-between shadow-sm animate__animated animate__fadeIn">
@@ -101,13 +129,13 @@ function renderizarResultados(resultados, container) {
                         <i class="bi bi-people-fill fs-5"></i>
                     </div>
                     <div>
-                        <span class="d-block small text-muted text-uppercase fw-bold" style="font-size:0.6rem;">Fila Estimada</span>
+                        <span class="d-block small text-muted text-uppercase fw-bold" style="font-size:0.6rem;">Fila de Análise</span>
                         <span class="fs-5 fw-bold text-dark text-nowrap">${processo._posicaoFila}º Lugar</span>
                     </div>
                 </div>
                 <div class="text-end border-start ps-3 border-primary border-opacity-25">
-                    <span class="d-block small text-muted text-uppercase fw-bold" style="font-size:0.6rem;">Previsão de Análise</span>
-                    <span class="fs-5 fw-bold text-primary text-nowrap"><i class="bi bi-calendar-check me-1"></i>${dataFmt}</span>
+                    <span class="d-block small text-muted text-uppercase fw-bold" style="font-size:0.6rem;">Análise Estimada</span>
+                    <span class="fs-5 fw-bold text-primary text-nowrap"><i class="bi bi-calendar-check me-1"></i>${dataEstimada}</span>
                 </div>
             </div>`;
         }
@@ -122,7 +150,7 @@ function renderizarResultados(resultados, container) {
                     </div>
                 </div>` : ""}
 
-                <div class="card border-0 mb-4 shadow-sm" style="border-radius: 12px; border-left: 8px solid ${corBorda} !important;">
+                <div class="card border-0 mb-4 shadow-sm w-100" style="border-radius: 12px; border-left: 8px solid ${corBorda} !important;">
                     <div class="card-body p-4 position-relative">
                         <span class="badge ${corBadge} position-absolute top-0 end-0 m-3 px-3 py-2 rounded-3 shadow-sm" style="font-size: 0.75rem;">
                             <i class="bi ${iconeBadge} me-1"></i> ${stDisplay}
@@ -132,9 +160,10 @@ function renderizarResultados(resultados, container) {
                         
                         <div class="d-flex align-items-center flex-wrap pt-1 mb-2 fw-bold" style="font-size: 0.8rem; color: #868e96;">
                             <span class="badge bg-light text-secondary border me-2" style="font-size: 0.65rem;">TEMA: ${tema}</span>
-                            <span>PROT: <span class="text-primary">${protocoloValue}</span></span>
+                            <span>PROT: <span class="text-primary">${protocoloVal}</span></span>
                             ${dataEntrada ? `<span class="mx-2 text-muted fw-normal">|</span><span>ENTRADA: ${dataEntrada}</span>` : ""}
-                            ${exibicaoDataDOE}
+                            ${dataSaida ? `<span class="mx-2 text-muted fw-normal">|</span><span class="text-success fw-bold">SAÍDA: ${dataSaida}</span>` : ""}
+                            ${exibicaoDOE}
                         </div>
                         
                         ${filaHtml}
@@ -144,17 +173,18 @@ function renderizarResultados(resultados, container) {
                                 <i class="bi bi-building me-1 fs-6 text-primary"></i> ${exibicaoEscola}
                             </p>
                             <button class="btn btn-sm shadow-sm font-weight-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_${processo.id}" style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 50px; padding: 6px 16px; font-weight: 600;">
-                                Detalhes <i class="bi bi-chevron-down ms-1"></i>
+                                Mais Detalhes <i class="bi bi-chevron-down ms-1"></i>
                             </button>
                         </div>
 
                         <div class="collapse mt-3" id="collapse_${processo.id}">
                             <div class="p-3 rounded-3 border-start border-3 border-primary ${isEmAndamento ? 'bg-warning bg-opacity-10' : 'bg-light'} shadow-sm">
-                                <h6 class="fw-bold text-dark mb-2 small"><i class="bi bi-chat-left-dots-fill me-1 text-primary"></i> Observações da Unidade:</h6>
+                                <h6 class="fw-bold text-dark mb-2 small"><i class="bi bi-chat-left-dots-fill me-1 text-primary"></i> Comunicado ao Servidor:</h6>
                                 <p class="mb-0 text-dark" style="line-height: 1.6; font-size: 0.9rem;">
-                                    ${processo.observacoes || "Fila de análise técnica seguindo o fluxo cronológico da URE Suzano."}
+                                    ${gerarMensagemHumanizada(processo)}
                                 </p>
-                                ${isRealmenteDevolvido ? `<div class="mt-2 p-2 bg-danger bg-opacity-10 text-danger rounded border border-danger small"><i class="bi bi-info-circle-fill me-1"></i> Atenção: Necessita de Correções!</div>` : ""}
+                                <hr class="my-2 opacity-10">
+                                <p class="small text-muted mb-0" style="font-size: 0.75rem;"><b>Nota Técnica:</b> ${(processo.observacoes || "Fila cronológica normal.").toUpperCase()}</p>
                             </div>
                         </div>
                     </div>

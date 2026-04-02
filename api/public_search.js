@@ -42,7 +42,7 @@ async function verificarTurnstile(token) {
     const { TURNSTILE_SECRET_KEY } = process.env;
     if (!TURNSTILE_SECRET_KEY) {
         console.error("[SEGURANÇA] TURNSTILE_SECRET_KEY não configurada no servidor.");
-        return true; // Bypass de segurança se a chave não estiver lá (para não quebrar o site)
+        return "CONFIG_ERROR"; // Sinal para o handler principal
     }
 
     try {
@@ -104,6 +104,10 @@ export default async function handler(req, res) {
     // 5. VERIFICAÇÃO DE ROBÔ (TURNSTILE)
     const turnstileToken = req.headers['x-turnstile-token'];
     const isHuman = await verificarTurnstile(turnstileToken);
+    
+    if (isHuman === "CONFIG_ERROR") {
+        return res.status(500).json({ error: "Erro de Configuração Crítica: Chave Secreta do Turnstile não encontrada na Vercel." });
+    }
     
     if (!isHuman) {
         return res.status(401).json({ error: "Verificação Anti-Robô inválida ou expirada. Atualize a página." });
